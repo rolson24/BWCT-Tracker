@@ -1,9 +1,7 @@
-import cv2
-import matplotlib.pyplot as plt
 import numpy as np
 from collections import deque
 
-from matching import iou_distance, embedding_distance, fuse_motion, fuse_score, linear_assignment, ious, fuse_iou
+from tracker.matching import iou_distance, embedding_distance, fuse_motion, fuse_score, linear_assignment, ious, fuse_iou
 # from tracker.gmc import GMC
 from tracker.basetrack import BaseTrack, TrackState
 from tracker.kalman_filter import KalmanFilter

@@ -4,7 +4,7 @@ import cv2
 
 # before calling run image_stats(source_image)
 
-def color_transfer(source_img_stats, target, clip=True, preserve_paper=True):
+def color_transfer_cpu(source_img_stats, target, clip=True, preserve_paper=True):
 	"""
 	Transfers the color distribution from the source to the target
 	image using the mean and standard deviations of the L*a*b*

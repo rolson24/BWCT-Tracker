@@ -1,11 +1,14 @@
+from typing import List, Tuple
+
 import numpy as np
 import scipy
-import lap
 from scipy.spatial.distance import cdist
 
-from cython_bbox import bbox_overlaps as bbox_ious
+from supervision.detection.utils import box_iou_batch
+
 from tracker import kalman_filter
 
+from scipy.optimize import linear_sum_assignment
 
 def merge_matches(m1, m2, shape):
     O,P,Q = shape
@@ -34,20 +37,32 @@ def _indices_to_matches(cost_matrix, indices, thresh):
 
     return matches, unmatched_a, unmatched_b
 
+def indices_to_matches(
+    cost_matrix: np.ndarray, indices: np.ndarray, thresh: float
+) -> Tuple[np.ndarray, tuple, tuple]:
+    matched_cost = cost_matrix[tuple(zip(*indices))]
+    matched_mask = matched_cost <= thresh
 
-def linear_assignment(cost_matrix, thresh):
-    if cost_matrix.size == 0:
-        return np.empty((0, 2), dtype=int), tuple(range(cost_matrix.shape[0])), tuple(range(cost_matrix.shape[1]))
-    matches, unmatched_a, unmatched_b = [], [], []
-    cost, x, y = lap.lapjv(cost_matrix, extend_cost=True, cost_limit=thresh)
-    for ix, mx in enumerate(x):
-        if mx >= 0:
-            matches.append([ix, mx])
-    unmatched_a = np.where(x < 0)[0]
-    unmatched_b = np.where(y < 0)[0]
-    matches = np.asarray(matches)
+    matches = indices[matched_mask]
+    unmatched_a = tuple(set(range(cost_matrix.shape[0])) - set(matches[:, 0]))
+    unmatched_b = tuple(set(range(cost_matrix.shape[1])) - set(matches[:, 1]))
     return matches, unmatched_a, unmatched_b
 
+def linear_assignment(
+    cost_matrix: np.ndarray, thresh: float
+) -> [np.ndarray, Tuple[int], Tuple[int, int]]:
+    if cost_matrix.size == 0:
+        return (
+            np.empty((0, 2), dtype=int),
+            tuple(range(cost_matrix.shape[0])),
+            tuple(range(cost_matrix.shape[1])),
+        )
+
+    cost_matrix[cost_matrix > thresh] = thresh + 1e-4
+    row_ind, col_ind = linear_sum_assignment(cost_matrix)
+    indices = np.column_stack((row_ind, col_ind))
+
+    return indices_to_matches(cost_matrix, indices, thresh)
 
 def ious(atlbrs, btlbrs):
     """
@@ -61,7 +76,7 @@ def ious(atlbrs, btlbrs):
     if ious.size == 0:
         return ious
 
-    ious = bbox_ious(
+    ious = box_iou_batch(
         np.ascontiguousarray(atlbrs, dtype=np.float),
         np.ascontiguousarray(btlbrs, dtype=np.float)
     )
