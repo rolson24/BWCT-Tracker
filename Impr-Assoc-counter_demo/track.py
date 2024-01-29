@@ -31,9 +31,9 @@ IMAGE_EXT = [".jpg", ".jpeg", ".webp", ".bmp", ".png"]
 def make_parser():
 	parser = argparse.ArgumentParser("Track and Count People with Improved Association Track!")
 
-	parser.add_argument("source_video_path", help="path to source video to perform counting on. 'path/to/video.ext' ext can be: ('mp4', 'm4v', 'mjpeg', 'avi', 'h264')")
-	parser.add_argument("color_source_path", help="path to color source image for color correction. 'path/to/image.ext' ext must be: ('jpg')")
-	parser.add_argument("output_dir", help="path to target output directory. 'path/to/output/dir'")
+	parser.add_argument("--source_video_path", help="path to source video to perform counting on. 'path/to/video.ext' ext can be: ('mp4', 'm4v', 'mjpeg', 'avi', 'h264')")
+	parser.add_argument("--color_source_path", help="path to color source image for color correction. 'path/to/image.ext' ext must be: ('jpg')")
+	parser.add_argument("--output_dir", help="path to target output directory. 'path/to/output/dir'")
 
 #     parser.add_argument("--benchmark", dest="benchmark", type=str, default='MOT17', help="benchmark to evaluate: MOT17 | MOT20")
 #     parser.add_argument("--eval", dest="split_to_eval", type=str, default='test', help="split to evaluate: train | val | test")
@@ -97,7 +97,7 @@ if __name__ == "__main__":
 	SOURCE_VIDEO_NAME = osp.basename(SOURCE_VIDEO_PATH).split('.')[0]
 	OUTPUT_DIR = args.output_dir
 	TARGET_VIDEO_PATH_ANN = f"{OUTPUT_DIR}/{SOURCE_VIDEO_NAME}_annotated.mp4"
-	TARGET_VIDEO_PATH_CLEAN = f"{OUTPUT_DIR}/{SOURCE_VIDEO_NAME}_clean.mp4"
+	TARGET_VIDEO_PATH_CLEAN = f"{OUTPUT_DIR}/{SOURCE_VIDEO_NAME}_clean.mp4"; print(TARGET_VIDEO_PATH_CLEAN)
 	TRACK_OUTPUT_FILE_PATH = f"{OUTPUT_DIR}/{SOURCE_VIDEO_NAME}_track_output.txt"
 	COUNT_OUTPUT_FILE_PATH = f"{OUTPUT_DIR}/{SOURCE_VIDEO_NAME}_count_output.txt"
 	COLOR_SOURCE_PATH = args.color_source_path
@@ -179,7 +179,7 @@ if __name__ == "__main__":
 
 	'''for cpu color correction'''
 	color_source = cv2.imread(COLOR_SOURCE_PATH)
-	color_source = cv2.cvtColor(color_source, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
+	color_source = cv2.cvtColor(color_source, cv2.COLOR_BGR2RGB).astype(np.float32)
 	source_img_stats = ct.image_stats(color_source)
 
 
@@ -214,7 +214,7 @@ if __name__ == "__main__":
 		''' Color Calibration '''
 		if color_calib_device == 'cpu':
 			frame = ct.color_transfer_cpu(source_img_stats, frame, clip=False, preserve_paper=False)
-			out.write(frame)
+			out.write(frame); print(frame)
 		# elif color_calib_device == 'gpu':
 		#     gpu_frame.upload(frame)
 		#     cv2.cuda.cvtColor(gpu_frame, cv2.COLOR_BGR2LAB, gpu_frame)
@@ -274,9 +274,9 @@ if __name__ == "__main__":
 		
 		fps_monitor.tick()
 		''' Log Time'''
-		if frame_id % 1000 == 0:
+		if frame_id % 20 == 0:
 			logger.info('Processing frame {}/{} ({:.2f} fps)'.format(frame_id, video_info.total_frames, max(1e-5, fps_monitor())))
-		
+		out.release()
 		return annotated_frame
 
 	''' Now process the whole video '''
@@ -296,4 +296,3 @@ if __name__ == "__main__":
 			for key, val in line_count.items():
 				writer.writerow([key, val])
 
-	out.release()

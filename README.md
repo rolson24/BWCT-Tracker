@@ -9,3 +9,15 @@ count and tracker for the Hanover Bike Walk Census Tool
 Counts
 -f "count-lines-file.txt"
 -c "yolo-weights.pt"
+
+Requirements: 
+
+!pip install fastreid
+!pip install ultralytics
+!pip install fastreid
+!pip install lap
+!pip install cython_bbox
+!pip install supervision
+!pip install loguru
+
+(put this into requirements.txt later)
