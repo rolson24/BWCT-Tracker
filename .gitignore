@@ -1,2 +1,3 @@
 *.mp4
 Impr-Assoc-counter_demo/__pycache__/*
+Impr-Assoc-counter_demo/tracker/__pycache__/*
