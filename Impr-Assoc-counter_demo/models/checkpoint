@@ -1,0 +1,2 @@
+model_checkpoint_path: "LSTM_model_14_and_15_bbL"
+all_model_checkpoint_paths: "LSTM_model_14_and_15_bbL"
