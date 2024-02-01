@@ -2,6 +2,8 @@ import cv2
 import numpy as np
 import cupy as cp
 
+import torch
+
 
 def cp_array_from_cv_cuda_gpumat(mat: cv2.cuda.GpuMat) -> cp.ndarray:
     class CudaArrayInterface:

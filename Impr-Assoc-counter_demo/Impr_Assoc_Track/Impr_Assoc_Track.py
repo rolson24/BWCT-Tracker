@@ -573,6 +573,7 @@ class ImprAssocTrack:
         bboxes = [track.tlbr for track in sdet_remain]
         bboxes = np.array(bboxes)
         # print(f"bboxes: {bboxes}")
+        # print(np.shape(img))
         if self.with_reid:
             features = self.encoder.inference(img, bboxes)
 

@@ -18,8 +18,8 @@ from torchreid import utils as ut
 
 class STrack(BaseTrack):
     # shared_kalman = KalmanFilter()
-    shared_LSTM_predictor = LSTM_predictor(LSTM_model, res=[vid_info.width, vid_info.height])
-
+    # shared_LSTM_predictor = LSTM_predictor(LSTM_model, res=[vid_info.width, vid_info.height])
+    shared_LSTM_predictor = None
     def __init__(self, tlwh, feature, score, class_id):
         # wait activate
         self._tlwh = np.asarray(tlwh, dtype=np.float64)
