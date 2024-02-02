@@ -78,7 +78,7 @@ def make_parser():
   #     parser.add_argument("--cmc-method", default="file", type=str, help="camera motion compensation method: files (Vidstab GMC) | sparseOptFlow | orb | ecc | none")
 
   # ReID
-  parser.add_argument("--with_reid", type=str, default="False", help="use Re-ID flag.")
+  parser.add_argument("--with_reid", dest="with_reid", default=False, help="use Re-ID flag.")
   parser.add_argument("--fast_reid_config", type=str, default="/content/drive/MyDrive/BWCT-tracker/Impr-Assoc-counter_demo/fast_reid/configs/MOT17/sbs_S50.yml", help="reid config file path")
   parser.add_argument("--fast_reid_weights", type=str, default=r"/content/drive/MyDrive/BWCT-tracker/Impr-Assoc-counter_demo/models/mot17_sbs_S50.pth", help="reid config file path")
   parser.add_argument('--proximity_thresh', type=float, default=0.1, help='threshold for rejecting low overlap reid matches')
@@ -340,7 +340,6 @@ if __name__ == "__main__":
         out.write(frame_cpu); #print(frame)
       elif args.color_calib_device == 'gpu':
         gpu_frame.upload(frame)
-        cv2.cuda.cvtColor(gpu_frame, cv2.COLOR_BGR2LAB, gpu_frame)
         frame_gpuMat = ct_gpu.color_transfer_gpu(source_img_stats, gpu_frame, clip=False, preserve_paper=False)
         frame_cpu = frame_gpuMat.download()
         out.write(frame_cpu)
