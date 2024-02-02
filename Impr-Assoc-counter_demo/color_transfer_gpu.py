@@ -373,18 +373,24 @@ def scale_array_gpu(arr_gpu, clip=False):
         scale_range = (max([min_val, 0]), min([max_val, 255]))
 
         min_gpu = create_scalar_gpumat(min_val, arr_gpu.size(), cv2.CV_32F)
+        scale_min_gpu = create_scalar_gpumat(scale_range[0], arr_gpu.size(), cv2.CV_32F)
         # print(f"min_gpu: {min_gpu.download()}")
         max_gpu = create_scalar_gpumat(max_val, arr_gpu.size(), cv2.CV_32F)
         # print(f"max_gpu: {max_gpu.download()}")
-        all_white_gpu = create_scalar_gpumat(scale_range[1]-scale_range[0], arr_gpu.size(), cv2.CV_32F)
+        scale_range_gpu = create_scalar_gpumat(scale_range[1]-scale_range[0], arr_gpu.size(), cv2.CV_32F)
         scaled_gpu = cv2.cuda.GpuMat(arr_gpu.size(), cv2.CV_32F)
         if min_val < scale_range[0] or max_val > scale_range[1]:
+          # print("needs scaling")
           cv2.cuda.subtract(arr_gpu, min_gpu, scaled_gpu)
+          # print(f"arr-min: {scaled_gpu.download()}")
           range_diff = create_scalar_gpumat(max_val-min_val, arr_gpu.size(), cv2.CV_32F)
-          min_gpu = create_scalar_gpumat(min_val, arr_gpu.size(), cv2.CV_32F)
+          # print(f"max-min: {range_diff.download()}")
+          # scale_range_gpu = create_scalar_gpumat(scale_range[1]-scale_range[0], arr_gpu.size(), cv2.CV_32F)
           cv2.cuda.divide(scaled_gpu, range_diff, scaled_gpu)
-          cv2.cuda.multiply(all_white_gpu, scaled_gpu, scaled_gpu)
-          cv2.cuda.add(scaled_gpu, min_gpu, scaled_gpu)
+          # print(f"(arr-min)/(mx-min): {scaled_gpu.download()}")
+          cv2.cuda.multiply(scale_range_gpu, scaled_gpu, scaled_gpu)
+          # print(f"(new_range[1] - new_range[0]) * (arr - mn) / (mx - mn): {scaled_gpu.download()}")
+          cv2.cuda.add(scaled_gpu, scale_min_gpu, scaled_gpu)
           # print(f"scaled_gpu: {scaled_gpu.download()}")
         else:
           scaled_gpu = arr_gpu
