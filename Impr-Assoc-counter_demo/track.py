@@ -1,3 +1,4 @@
+
 import argparse
 import os
 from pickle import OBJ
@@ -78,14 +79,14 @@ def make_parser():
   #     parser.add_argument("--cmc-method", default="file", type=str, help="camera motion compensation method: files (Vidstab GMC) | sparseOptFlow | orb | ecc | none")
 
   # ReID
-  parser.add_argument("--with_reid", dest="with_reid", default=False, help="use Re-ID flag.")
-  parser.add_argument("--fast_reid_config", type=str, default=r"./fast_reid/configs/MOT17/sbs_S50.yml", help="reid config file path")
-  parser.add_argument("--fast_reid_weights", type=str, default=r"./models/mot17_sbs_S50.pth", help="reid config file path")
+  parser.add_argument("--with_reid", dest="with_reid", action="store_true", help="use Re-ID flag.")
+  parser.add_argument("--fast_reid_config", type=str, default="/content/drive/MyDrive/BWCT-tracker/Impr-Assoc-counter_demo/fast_reid/configs/MOT17/sbs_S50.yml", help="reid config file path")
+  parser.add_argument("--fast_reid_weights", type=str, default=r"/content/drive/MyDrive/BWCT-tracker/Impr-Assoc-counter_demo/models/mot17_sbs_S50.pth", help="reid config file path")
   parser.add_argument('--proximity_thresh', type=float, default=0.1, help='threshold for rejecting low overlap reid matches')
   parser.add_argument('--appearance_thresh', type=float, default=0.25, help='threshold for rejecting low appearance similarity reid matches')
 
   # Color Calibration
-  parser.add_argument('--color_calib_enable', type=str, default="False", help='Enable color calibration')
+  parser.add_argument('--color_calib_enable', dest="color_calib_enable", action="store_true", help='Enable color calibration')
   parser.add_argument("--color_source_path", help="path to color source image for color correction. 'path/to/image.ext' ext must be: ('jpg')")
   parser.add_argument('--color_calib_device', type=str, default="cpu", help='which device to use for color calibration. GPU requires OpeCV with CUDA')
 
@@ -224,13 +225,14 @@ if __name__ == "__main__":
                                       iou_weight=args.iou_weight,
                                       proximity_thresh=args.proximity_thresh,
                                       appearance_thresh=args.appearance_thresh,
-                                      with_reid=bool(args.with_reid),
+                                      with_reid=args.with_reid,
                                       fast_reid_config=args.fast_reid_config,
                                       fast_reid_weights=args.fast_reid_weights,
                                       device=args.device,
                                       frame_rate=video_info.fps)
   elif OBJECT_TRACKER == "ConfTrack":
     if args.default_parameters:
+      print(f"with reid {args.with_reid}")
       Tracker = ConfTrack(with_reid=args.with_reid,
                           fast_reid_config=args.fast_reid_config, #need to download
                           fast_reid_weights=args.fast_reid_weights, #need to download
@@ -245,7 +247,7 @@ if __name__ == "__main__":
                           track_buffer=args.track_buffer,
                           proximity_thresh=args.proximity_thresh,
                           appearance_thresh=args.appearance_thresh,
-                          with_reid=bool(args.with_reid),
+                          with_reid=args.with_reid,
                           fast_reid_config=args.fast_reid_config, #need to download
                           fast_reid_weights=args.fast_reid_weights, #need to download
                           device=args.device,
@@ -258,14 +260,14 @@ if __name__ == "__main__":
     if args.default_parameters:
       STrack.shared_LSTM_predictor = LSTM_predictor(LSTM_model)
       Tracker = LSTMTrack(model=LSTM_model,
-                          with_reid=bool(args.with_reid),
+                          with_reid=args.with_reid,
                           torchreid_model=r"/content/drive/MyDrive/BWCT-tracker/Impr-Assoc-counter_demo/models/osnet_ms_d_c.pth.tar", # need to move to folder
                           frame_rate=video_info.fps)
     else:
       STrack.shared_LSTM_predictor = LSTM_predictor(LSTM_model)
       # add in params
       Tracker = LSTMTrack(model=LSTM_model,
-                          with_reid=bool(args.with_reid),
+                          with_reid=args.with_reid,
                           track_thresh=args.track_low_thresh,
                           track_buffer=args.track_buffer,
                           match_thresh=args.track_match_thresh,
@@ -297,7 +299,7 @@ if __name__ == "__main__":
   # create instance of FPSMonitor
   fps_monitor = sv.FPSMonitor()
 
-  if args.color_calib_enable == "True":
+  if args.color_calib_enable:
     if args.color_calib_device=="cpu":
       '''for cpu color correction'''
       color_source = cv2.imread(COLOR_SOURCE_PATH)
@@ -333,7 +335,7 @@ if __name__ == "__main__":
   def callback(frame: np.ndarray, frame_id: int, color_calib_device='cpu') -> np.ndarray:
     global source_img_stats, out, fps_monitor, line_counts, args
 
-    if args.color_calib_enable == "True":
+    if args.color_calib_enable:
       ''' Color Calibration '''
       if args.color_calib_device == 'cpu':
         frame_cpu = ct_cpu.color_transfer_cpu(source_img_stats, frame, clip=False, preserve_paper=False)
