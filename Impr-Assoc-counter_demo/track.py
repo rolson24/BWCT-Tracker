@@ -30,7 +30,7 @@ from supervision import ByteTrack
 from ultralytics import YOLO
 
 import color_transfer_cpu as ct_cpu
-import color_transfer_gpu as ct_gpu
+# import color_transfer_gpu as ct_gpu
 
 import csv
 
@@ -79,13 +79,13 @@ def make_parser():
 
   # ReID
   parser.add_argument("--with_reid", dest="with_reid", default=False, help="use Re-ID flag.")
-  parser.add_argument("--fast_reid_config", type=str, default="/content/drive/MyDrive/BWCT-tracker/Impr-Assoc-counter_demo/fast_reid/configs/MOT17/sbs_S50.yml", help="reid config file path")
-  parser.add_argument("--fast_reid_weights", type=str, default=r"/content/drive/MyDrive/BWCT-tracker/Impr-Assoc-counter_demo/models/mot17_sbs_S50.pth", help="reid config file path")
+  parser.add_argument("--fast_reid_config", type=str, default=r"./fast_reid/configs/MOT17/sbs_S50.yml", help="reid config file path")
+  parser.add_argument("--fast_reid_weights", type=str, default=r"./models/mot17_sbs_S50.pth", help="reid config file path")
   parser.add_argument('--proximity_thresh', type=float, default=0.1, help='threshold for rejecting low overlap reid matches')
   parser.add_argument('--appearance_thresh', type=float, default=0.25, help='threshold for rejecting low appearance similarity reid matches')
 
   # Color Calibration
-  parser.add_argument('--color_calib_enable', type=str, default="True", help='Enable color calibration')
+  parser.add_argument('--color_calib_enable', type=str, default="False", help='Enable color calibration')
   parser.add_argument("--color_source_path", help="path to color source image for color correction. 'path/to/image.ext' ext must be: ('jpg')")
   parser.add_argument('--color_calib_device', type=str, default="cpu", help='which device to use for color calibration. GPU requires OpeCV with CUDA')
 
@@ -207,7 +207,7 @@ if __name__ == "__main__":
   #									 )
   if OBJECT_TRACKER == "Impr_Assoc":
     if args.default_parameters:
-      Tracker = ImprAssocTrack(with_reid=bool(args.with_reid),
+      Tracker = ImprAssocTrack(with_reid=args.with_reid,
                               fast_reid_config=args.fast_reid_config,
                               fast_reid_weights=args.fast_reid_weights,
                               device=args.device,
