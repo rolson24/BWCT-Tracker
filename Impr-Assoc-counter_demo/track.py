@@ -10,6 +10,10 @@ import torch
 import tensorflow as tf
 import json
 
+from YOLOv8_TensorRT import TRTModule  # isort:skip
+from YOLOv8_TensorRT.torch_utils import det_postprocess
+from YOLOv8_TensorRT.utils import letterbox, blob, path_to_list
+
 sys.path.append('.')
 
 from loguru import logger
@@ -53,7 +57,7 @@ def make_parser():
 
   # Detector
   parser.add_argument("--yolo_version", default="yolov8", type=str, help="yolo model architecture. Can be 'yolov8' or 'yolo-nas'")
-  parser.add_argument("--device", default="gpu", type=str, help="device to run our model, can either be cpu or gpu")
+  parser.add_argument("--device", default="cuda", type=str, help="device to run our model, can either be cpu or cuda")
   parser.add_argument("--conf", default=None, type=float, help="test conf")
   parser.add_argument("--nms", default=None, type=float, help="test nms threshold")
   parser.add_argument("--tsize", default=None, type=int, help="test img size")
@@ -150,28 +154,55 @@ if __name__ == "__main__":
   OBJECT_TRACKER = args.object_tracker
  
   print(f"color calib enable: {args.color_calib_enable}")
+  MODEL = args.ckpt
+
+  MODEL_EXTENSION = osp.basename(MODEL).split('.')[1]
+
   if args.yolo_version == 'yolov8':
     ''' load YOLOv8'''
     # change this
-    MODEL = args.ckpt
 
     # load YOLOv8
     logger.info("loading YOLOv8 model from: {}", MODEL)
-    yolo_model = YOLO(MODEL)
-    yolo_model.fuse()
+    if MODEL_EXTENSION == "pt":
+      yolo_model = YOLO(MODEL)
+      yolo_model.fuse()
+      # dict maping class_id to class_name
+      CLASS_NAMES_DICT = yolo_model.model.names
+
+    elif MODEL_EXTENSION == "engine":
+      #engine = "yolov8s.engine"
+      global Engine
+      global device
+      global H, W
+      # Load a model from an .engine file
+      device = torch.device(args.device)
+      Engine = TRTModule(MODEL, device)
+      H, W = Engine.inp_info[0].shape[-2:]
+      print(H, W)
+      Engine.set_desired(['num_dets', 'bboxes', 'scores', 'labels'])
+
+      # yolo_model = YOLO(MODEL, task="detect")
+      CLASS_NAMES_DICT = {0:'0', 1:'1', 2:'2', 3:'3'}
+      #yolo_model = torch.hub.load(MODEL, 'custom',
+    else:
+      yolo_model = YOLO(MODEL)
+      # yolo_model.fuse()
+      # dict maping class_id to class_name
+      CLASS_NAMES_DICT = {0:'0', 1:'1', 2:'2', 3:'3'}
+
+      # CLASS_NAMES_DICT = yolo_model.model.names
   elif args.yolo_version == 'yolo-nas':
     ''' load YOLO-NAS'''
     # change this
-    MODEL = args.ckpt
 
     # load YOLO-NAS
     logger.info("loading YOLO-NAS model from: {}", MODEL)
 
     yolo_model = YOLO(MODEL)
     yolo_model.fuse()
+    CLASS_NAMES_DICT = yolo_model.model.names
 
-  # dict maping class_id to class_name
-  CLASS_NAMES_DICT = yolo_model.model.names
 
   # class_ids of interest - pedestrians, bikes, scooters, wheelchairs
   selected_classes = [0,1,2,3]
@@ -285,7 +316,6 @@ if __name__ == "__main__":
                           match_thresh=args.track_match_thresh,
                           frame_rate=video_info.fps)
    
-  out = cv2.VideoWriter(TARGET_VIDEO_PATH_CLEAN, cv2.VideoWriter_fourcc(*'mp4v'), video_info.fps, (video_info.width, video_info.height))
 
   # create instance of BoxAnnotator
   box_annotator = sv.BoxAnnotator(thickness=1, text_thickness=2, text_scale=1)
@@ -300,6 +330,7 @@ if __name__ == "__main__":
   fps_monitor = sv.FPSMonitor()
 
   if args.color_calib_enable:
+    out = cv2.VideoWriter(TARGET_VIDEO_PATH_CLEAN, cv2.VideoWriter_fourcc(*'mp4v'), video_info.fps, (video_info.width, video_info.height))
     if args.color_calib_device=="cpu":
       '''for cpu color correction'''
       color_source = cv2.imread(COLOR_SOURCE_PATH)
@@ -351,12 +382,31 @@ if __name__ == "__main__":
 
     ''' Detection '''
     if args.yolo_version == 'yolov8':
-      # yolov8
-      results = yolo_model(frame, verbose=False, iou=0.7, conf=0.1)[0]
-      detections = sv.Detections.from_ultralytics(results)
-      detections = detections[np.isin(detections.class_id, selected_classes)]
+      if MODEL_EXTENSION == "engine":
+        bgr, ratio, dwdh = letterbox(frame_cpu, (W,H))
+        rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
+        # rgb = frame_cpu.copy()
+        tensor = blob(rgb, return_seg=False)
+        dwdh = torch.asarray(dwdh*2, dtype=torch.float32, device=device)
+        tensor = torch.asarray(tensor, device=device)
+        data = Engine(tensor)
+        # print(data)
+        bboxes, scores, labels = det_postprocess(data)
+        detections = sv.Detections.empty()
+        detections.xyxy = ((bboxes-dwdh)/ratio).cpu().numpy()
+        detections.confidence = scores.cpu().numpy()
+
+        detections.class_id = labels.cpu().numpy().astype(int)
+        # if detections.confidence.size > 0:
+        #   print(detections)
+      else:
+        # yolov8
+        results = yolo_model.predict(frame_cpu, verbose=False, iou=0.7, conf=0.1, device="cuda")[0]
+        detections = sv.Detections.from_ultralytics(results)
+        detections = detections[np.isin(detections.class_id, selected_classes)]
+
     elif args.yolo_version == 'yolo-nas':
-      results = yolo_model.predict(frame, iou=0.7, conf=0.1, fuse_model=False)[0]
+      results = yolo_model.predict(frame_cpu, iou=0.7, conf=0.1, fuse_model=False)[0]
       detections = sv.Detections.from_yolo_nas(results)
       detections = detections[np.isin(detections.class_id, selected_classes)]
 

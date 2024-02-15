@@ -3,5 +3,13 @@ Impr-Assoc-counter_demo/__pycache__/*
 Impr-Assoc-counter_demo/*/__pycache__/*
 Impr-Assoc-counter_demo/models/*
 Impr-Assoc-counter_demo/Impr_Assoc_Track/__pycache__/*
+Impr-Assoc-counter_demo/Impr_Assoc_Track/__pycache__/__pycache__/*
 input_videos/*
 output_dir/*
+Impr-Assoc-counter_demo/*.nsys-rep
+Impr-Assoc-counter_demo/*.sqlite
+Impr-Assoc-counter_demo/datasets
+Impr-Assoc-counter_demo/yolov8n_pytorch_output.txt
+Impr-Assoc-counter_demo/yolov8n_trt_fp16_output.txt
+Impr-Assoc-counter_demo/yovov8n_trt_output.txt
+Impr-Assoc-counter_demo/03-2023-10-31T14-2M-ECSCMacLeanBridgeEast/*

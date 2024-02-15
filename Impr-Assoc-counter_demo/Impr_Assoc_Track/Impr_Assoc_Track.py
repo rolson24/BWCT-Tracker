@@ -303,6 +303,7 @@ class ImprAssocTrack:
         self.with_reid = with_reid
 
         if with_reid:
+            print(f"Loading ReID model: {fast_reid_config}")
             self.encoder = FastReIDInterface(fast_reid_config, fast_reid_weights, device)
 
         # self.gmc = GMC(method=args.cmc_method, verbose=[args.name, args.ablation])
