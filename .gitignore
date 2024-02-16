@@ -13,3 +13,7 @@ Impr-Assoc-counter_demo/yolov8n_pytorch_output.txt
 Impr-Assoc-counter_demo/yolov8n_trt_fp16_output.txt
 Impr-Assoc-counter_demo/yovov8n_trt_output.txt
 Impr-Assoc-counter_demo/03-2023-10-31T14-2M-ECSCMacLeanBridgeEast/*
+Impr-Assoc-counter_demo/output_dir/*
+webapp/static/*
+webapp/coordinates.txt
+streamlit_webapp/*

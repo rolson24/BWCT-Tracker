@@ -10,6 +10,7 @@ import torch
 import tensorflow as tf
 import json
 
+
 from YOLOv8_TensorRT import TRTModule  # isort:skip
 from YOLOv8_TensorRT.torch_utils import det_postprocess
 from YOLOv8_TensorRT.utils import letterbox, blob, path_to_list
@@ -31,8 +32,9 @@ from ConfTrack.ConfTrack import ConfTrack
 from LSTMTrack.LSTMTrack import LSTM_Track
 from LSTMTrack.LSTM_predictor import LSTM_predictor
 from supervision import ByteTrack
+import super_gradients as sg
 
-from ultralytics import YOLO
+from ultralytics import YOLO, NAS
 
 import color_transfer_cpu as ct_cpu
 # import color_transfer_gpu as ct_gpu
@@ -120,15 +122,16 @@ def save_config(args, file_path):
         json.dump(config_dict, file, indent=4)
 
 def parse_count_lines_file(count_lines_file):
-	'''File format:
-		(x1, y1) (x2, y2)
-		(x1, y1) (x2, y2)'''
-	with open(count_lines_file, 'r') as f:
-		lines = f.readlines()
-	lines = [line.strip() for line in lines]
-	lines = [line.split(' ') for line in lines]
-	lines = [[eval(coord.replace('(', '').replace(')', '')) for coord in line] for line in lines]
-	return lines
+  '''File format:
+  (x1,y1) (x2,y2)
+  (x1,y1) (x2,y2)'''
+  with open(count_lines_file, 'r') as f:
+    lines = f.readlines()
+  lines = [line.strip() for line in lines]
+  lines = [line.split(' ') for line in lines]
+  logger.info(f"lines pre replace: {lines}")
+  lines = [[eval(coord.replace('(', '').replace(')', '')) for coord in line] for line in lines]
+  return lines
 	 
 if __name__ == "__main__":
   args = make_parser().parse_args()
@@ -199,9 +202,14 @@ if __name__ == "__main__":
     # load YOLO-NAS
     logger.info("loading YOLO-NAS model from: {}", MODEL)
 
-    yolo_model = YOLO(MODEL)
-    yolo_model.fuse()
-    CLASS_NAMES_DICT = yolo_model.model.names
+    yolo_model = sg.training.models.get(
+        "yolo-nas-s", # model name
+        num_classes=4, # number of classes
+        checkpoint_path=MODEL, # path to the checkpoint
+    ).to(torch.device("cuda:0"))
+    CLASS_NAMES_DICT = {0:'0', 1:'1', 2:'2', 3:'3'}
+
+    # CLASS_NAMES_DICT = yolo_model.model.names
 
 
   # class_ids of interest - pedestrians, bikes, scooters, wheelchairs
@@ -212,8 +220,9 @@ if __name__ == "__main__":
 
   count_lines = parse_count_lines_file(COUNT_LINES_FILE)
   line_zones = []
-  # for line in count_lines:
-  line_zones.append(sv.LineZone(start=sv.Point(640, 0), end=sv.Point(640, 720)))
+  for line in count_lines:
+    logger.info(f"line {line}")
+    line_zones.append(sv.LineZone(start=sv.Point(line[0][0], line[0][1]), end=sv.Point(line[1][0], line[1][1])))
   print(f"line_zones {line_zones}")
 
   # impr_assoc_tracker = ImprAssocTrack(track_high_thresh=args.track_high_thresh,
@@ -365,7 +374,6 @@ if __name__ == "__main__":
 
   def callback(frame: np.ndarray, frame_id: int, color_calib_device='cpu') -> np.ndarray:
     global source_img_stats, out, fps_monitor, line_counts, args
-
     if args.color_calib_enable:
       ''' Color Calibration '''
       if args.color_calib_device == 'cpu':
@@ -406,7 +414,7 @@ if __name__ == "__main__":
         detections = detections[np.isin(detections.class_id, selected_classes)]
 
     elif args.yolo_version == 'yolo-nas':
-      results = yolo_model.predict(frame_cpu, iou=0.7, conf=0.1, fuse_model=False)[0]
+      results = yolo_model.predict(frame_cpu, iou=0.7, conf=0.1, fuse_model=False)
       detections = sv.Detections.from_yolo_nas(results)
       detections = detections[np.isin(detections.class_id, selected_classes)]
 
@@ -439,7 +447,6 @@ if __name__ == "__main__":
       scene=annotated_frame,
       detections=detections,
       labels=labels)
-
     for line_zone in line_zones:
       annotated_frame = line_zone_annotator.annotate(annotated_frame, line_counter=line_zone)
 
@@ -456,6 +463,16 @@ if __name__ == "__main__":
     ''' Log Time'''
     if frame_id % 20 == 0:
       logger.info('Processing frame {}/{} ({:.2f} fps)'.format(frame_id, video_info.total_frames, max(1e-5, fps_monitor())))
+      progress = frame_id / video_info.total_frames * 100  # Calculate progress as a percentage
+      with open('progress.txt', 'w') as f:
+        f.write(str(progress))
+      logger.info(f"Write Progress: {progress}")
+
+    # ''' Log Time'''
+    # if frame_id % 20 == 0:
+    #     progress = frame_id / video_info.total_frames * 100  # Calculate progress as a percentage
+    #     yield progress  # Yield progress updates to the client
+      
     return annotated_frame
 
   ''' Now process the whole video '''
@@ -466,15 +483,16 @@ if __name__ == "__main__":
     target_path = TARGET_VIDEO_PATH_ANN,
     callback=callback
   )
+if args.color_calib_enable:
   out.release() 
  
- 
-  ''' Save Counts ''' 
-  with open(COUNT_OUTPUT_FILE_PATH, 'a+', newline='', encoding='UTF8') as f:
-    writer = csv.writer(f)
-    for i, line_count in enumerate(line_counts):
-      writer.writerow([f"line {i}"])
-      for key, val in line_count.items():
-        writer.writerow([key, val])
-    writer.writerow([f"Average frames per second: {fps_monitor()}"])
+
+''' Save Counts ''' 
+with open(COUNT_OUTPUT_FILE_PATH, 'a+', newline='', encoding='UTF8') as f:
+  writer = csv.writer(f)
+  for i, line_count in enumerate(line_counts):
+    writer.writerow([f"line {i}"])
+    for key, val in line_count.items():
+      writer.writerow([key, val])
+  writer.writerow([f"Average FPS: {fps_monitor()}"])
 
