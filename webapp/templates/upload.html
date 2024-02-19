@@ -590,8 +590,8 @@
                             type: 'bar'
                         };
                     }
-                    acc[key].x.push(d.timestamp); // Ensure this is a date string or a Date object
-                    acc[key].y.push(d[0]); // The count value
+                    acc[key].x.push(d.time); // Ensure this is a date string or a Date object
+                    acc[key].y.push(d.count); // The count value
                     return acc;
                 }, {});
 

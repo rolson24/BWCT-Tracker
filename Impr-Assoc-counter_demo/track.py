@@ -189,7 +189,7 @@ if __name__ == "__main__":
       Engine.set_desired(['num_dets', 'bboxes', 'scores', 'labels'])
 
       # yolo_model = YOLO(MODEL, task="detect")
-      CLASS_NAMES_DICT = {0:'0', 1:'1', 2:'2', 3:'3'}
+      CLASS_NAMES_DICT = {1:"Pedestrians", 0:"Bikes", 2:"Scooters", 3:"Wheelchairs"} # for yolov8n-2023-11-03 change for yolov8s-2024-02-14
       #yolo_model = torch.hub.load(MODEL, 'custom',
     else:
       yolo_model = YOLO(MODEL)

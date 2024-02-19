@@ -313,20 +313,26 @@ def get_crossings_data(filename):
         # Read the line_crossings.txt file and parse the data
         line_crossings_file_path = os.path.join(most_recent_run, f'{video_name}_line_crossings.txt')
         crossings_df = pd.read_csv(line_crossings_file_path, header=None, skiprows=1, sep=',')
-        print(f"crossings_df: {crossings_df}")
         crossings_df.columns = ['frame_num', 'line_num', 'class_name', 'direction']
         
         # Calculate timestamps and aggregate by hour
         crossings_df['timestamp'] = pd.to_datetime(crossings_df['frame_num'] / fps, unit='s')
+
+        # Format timestamps to only include the time portion
+        crossings_df['time'] = crossings_df['timestamp'].dt.time
+
         crossings_df.set_index('timestamp', inplace=True)
-        hourly_counts = crossings_df.groupby([pd.Grouper(freq='H'), 'line_num', 'class_name', 'direction']).size()
-        
-        # Prepare the data for Plotly
+        hourly_counts = crossings_df.groupby([pd.Grouper(freq='H'), 'line_num', 'class_name', 'direction']).size().reset_index(name='count')
+
+        # Use the formatted 'time' for plotting
+        hourly_counts['time'] = hourly_counts['timestamp'].dt.time
+        hourly_counts.drop(columns=['timestamp'], inplace=True)
+
         # Convert to JSON or a suitable format for the frontend
-        plotly_data = hourly_counts.reset_index().to_json(orient='records')
-        print(f"plotly_data: {plotly_data}")
+        plotly_data = hourly_counts.to_json(orient='records', date_format='iso')
         
         return jsonify(plotly_data)
+
     else:
         return jsonify({'message': 'No runs found for the video'}),  404
 
