@@ -155,6 +155,9 @@ if __name__ == "__main__":
   COLOR_SOURCE_PATH = args.color_source_path
   COUNT_LINES_FILE = args.count_lines_file
   OBJECT_TRACKER = args.object_tracker
+
+  # save the line crossings file
+  LINE_CROSSINGS_FILE = f"{THIS_RUN_FOLDER}/{SOURCE_VIDEO_NAME}_line_crossings.txt"
  
   print(f"color calib enable: {args.color_calib_enable}")
   MODEL = args.ckpt
@@ -220,9 +223,13 @@ if __name__ == "__main__":
 
   count_lines = parse_count_lines_file(COUNT_LINES_FILE)
   line_zones = []
-  for line in count_lines:
-    logger.info(f"line {line}")
-    line_zones.append(sv.LineZone(start=sv.Point(line[0][0], line[0][1]), end=sv.Point(line[1][0], line[1][1])))
+  with open(LINE_CROSSINGS_FILE, 'w') as f:
+
+    for i, line in enumerate(count_lines):
+      logger.info(f"line {line}")
+      line_zones.append(sv.LineZone(start=sv.Point(line[0][0], line[0][1]), end=sv.Point(line[1][0], line[1][1])))
+      f.write(f"line_{i}: ({line[0]}, {line[1]}),")
+    f.write("\n")
   print(f"line_zones {line_zones}")
 
   # impr_assoc_tracker = ImprAssocTrack(track_high_thresh=args.track_high_thresh,
@@ -372,6 +379,8 @@ if __name__ == "__main__":
       class_counts[val+"_out"] = 0
     line_counts.append(class_counts)
 
+
+
   def callback(frame: np.ndarray, frame_id: int, color_calib_device='cpu') -> np.ndarray:
     global source_img_stats, out, fps_monitor, line_counts, args
     if args.color_calib_enable:
@@ -452,21 +461,29 @@ if __name__ == "__main__":
 
 
     ''' Update line counter '''
+    # Need to write to a file that stores the counts in this format:
+    # <frame_id>,<line number>,<class name>,<in/out>
     for i, line_zone in enumerate(line_zones):
-      objects_in, objects_out = line_zone.trigger(detections)
-      for obj in detections.class_id[np.isin(objects_in, True)]:
-        line_counts[i][CLASS_NAMES_DICT[obj]+"_in"] += 1
-      for obj in detections.class_id[np.isin(objects_out, True)]:
-        line_counts[i][CLASS_NAMES_DICT[obj]+"_out"] += 1
+        objects_in, objects_out = line_zone.trigger(detections)
+        for obj in detections.class_id[np.isin(objects_in, True)]:
+            line_counts[i][CLASS_NAMES_DICT[obj]+"_in"] += 1
+            with open(LINE_CROSSINGS_FILE, 'a') as f:
+                f.write(f"{frame_id},{i},{CLASS_NAMES_DICT[obj]},in\n")
+        for obj in detections.class_id[np.isin(objects_out, True)]:
+            line_counts[i][CLASS_NAMES_DICT[obj]+"_out"] += 1
+            with open(LINE_CROSSINGS_FILE, 'a') as f:
+                f.write(f"{frame_id},{i},{CLASS_NAMES_DICT[obj]},out\n")
 
     fps_monitor.tick()
     ''' Log Time'''
     if frame_id % 20 == 0:
-      logger.info('Processing frame {}/{} ({:.2f} fps)'.format(frame_id, video_info.total_frames, max(1e-5, fps_monitor())))
+      # logger.info('Processing frame {}/{} ({:.2f} fps)'.format(frame_id, video_info.total_frames, max(1e-5, fps_monitor())))
       progress = frame_id / video_info.total_frames * 100  # Calculate progress as a percentage
       with open('progress.txt', 'w') as f:
         f.write(str(progress))
-      logger.info(f"Write Progress: {progress}")
+      with open('track_logs.txt', '+a') as f:
+        f.write('Processing frame {}/{} ({:.2f} fps)'.format(frame_id, video_info.total_frames, max(1e-5, fps_monitor())))
+      # logger.info(f"Write Progress: {progress}")
 
     # ''' Log Time'''
     # if frame_id % 20 == 0:

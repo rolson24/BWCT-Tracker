@@ -17,3 +17,5 @@ Impr-Assoc-counter_demo/output_dir/*
 webapp/static/*
 webapp/coordinates.txt
 streamlit_webapp/*
+webapp/line_crossings.txt
+webapp/track_logs.txt
