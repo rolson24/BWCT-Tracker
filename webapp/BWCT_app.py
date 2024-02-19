@@ -1,6 +1,6 @@
 import time
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
-from flask import send_from_directory
+from flask import send_from_directory, send_file
 
 from flask_uploads import UploadSet, configure_uploads, ALL
 from flask import Response, stream_with_context
@@ -13,6 +13,9 @@ from os import remove
 from os.path import exists
 import glob
 
+import pandas as pd
+import math
+
 app = Flask(__name__)
 socketio = SocketIO(app)
 # Secret flash messaging
@@ -22,6 +25,7 @@ videos = UploadSet('videos', ALL)
 
 app.config['UPLOADED_VIDEOS_DEST'] = 'static/uploads'
 configure_uploads(app, videos)
+
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -38,6 +42,52 @@ def upload():
     else:
         return render_template('upload.html')  # replace 'index.html' with your actual template
 
+@app.route('/download_counts/<filename>')
+def download_counts(filename):
+    # Construct the path to the counts file
+    video_name = filename.split('.')[0]
+    base_path = os.path.join('static/outputs', video_name)
+    run_folders = glob.glob(os.path.join(base_path, 'run_*'))
+    # Sort the folders by creation time and get the most recent one
+    run_folders.sort(key=os.path.getctime, reverse=True)
+    most_recent_run = run_folders[0] if run_folders else None
+    # Check if there is a most recent run folder
+    if most_recent_run:
+        # Construct the path to the counts file within the most recent run folder
+        counts_file_path = os.path.join(most_recent_run, f'{video_name}_counts_output.txt')
+        # Check if the counts file exists
+        if os.path.exists(counts_file_path):
+            return send_file(counts_file_path, as_attachment=True)
+        else:
+            return "Counts file not found in the most recent run", 404
+    else:
+        return "No runs found for the video", 404
+
+@app.route('/download_processed_video/<filename>')
+def download_video(filename):
+    # Construct the path to the counts file
+    video_name = filename.split('.')[0]
+    base_path = os.path.join('static/outputs', video_name)
+    run_folders = glob.glob(os.path.join(base_path, 'run_*'))
+    # Sort the folders by creation time and get the most recent one
+    run_folders.sort(key=os.path.getctime, reverse=True)
+    most_recent_run = run_folders[0] if run_folders else None
+    # Check if there is a most recent run folder
+    if most_recent_run:
+        # Construct the path to the counts file within the most recent run folder
+        counts_file_path = os.path.join(most_recent_run, f'{video_name}_annotated.mp4')
+        # Check if the counts file exists
+        if os.path.exists(counts_file_path):
+            return send_file(counts_file_path, as_attachment=True)
+        else:
+            return "Counts file not found in the most recent run", 404
+    else:
+        return "No runs found for the video", 404
+
+
+@app.route('/download_lines')
+def download_lines():
+    return send_file('line_crossings.txt', as_attachment=True)
 
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
@@ -52,6 +102,28 @@ def coordinates():
         return jsonify({'message': 'Coordinates recorded'})
     return jsonify({'message': 'No coordinates provided'}), 400
 
+@app.route('/clear_lines', methods=['POST'])
+def clear_lines():
+    if exists('coordinates.txt'):
+        remove('coordinates.txt')
+    return jsonify({'message': 'Lines cleared'})
+
+def seconds_to_hms(seconds):
+    if seconds == None:
+        return "infinite"
+    else:
+        hours = int(seconds //  3600)
+        minutes = int((seconds %  3600) //  60)
+        seconds = int(seconds %  60)
+        return "{:02}:{:02}:{:02}".format(hours, minutes, seconds)
+def calculate_estimated_time_remaining(progress, processing_seconds):
+    if progress != 0:
+        estimated_total_time = (processing_seconds * 100) / progress
+        estimated_time_remaining = estimated_total_time - processing_seconds
+
+    else:
+        estimated_time_remaining = None
+    return seconds_to_hms(estimated_time_remaining)
 
 @app.route('/process', methods=['POST'])
 def process():
@@ -68,7 +140,7 @@ def process_video(filename):
     print("Start processing video")
     script_path = "../Impr-Assoc-counter_demo/track.py"
     output_path = "static/outputs/"
-    model_path = "../Impr-Assoc-counter_demo/models/yolov8s-2024-02-14-best_fp16_trt.engine"
+    model_path = "../Impr-Assoc-counter_demo/models/yolov8s-2024-02-16-best_fp16_trt.engine"
     video_path = os.path.join(app.config['UPLOADED_VIDEOS_DEST'], filename)
     try:
         process = subprocess.Popen(
@@ -79,31 +151,122 @@ def process_video(filename):
                 "-f", "coordinates.txt",
                 "-c", model_path
             ],
-             stdout=subprocess.PIPE,
-             stderr=subprocess.PIPE)
+            #  stdout=subprocess.PIPE,
+            #  stderr=subprocess.PIPE
+             )
         socketio.emit('progress', {'data': 0})
-
+        processing_seconds = 0
         while process.poll() is None:
             try:
                 with open('progress.txt', 'r') as f:
                     progress = float(f.read().strip())
-                    socketio.emit('progress', {'data': progress})
+                    socketio.emit('progress', {'data': progress, 'time': calculate_estimated_time_remaining(progress, processing_seconds)})
                     print(f"Progress: {progress}")
             except FileNotFoundError:
                 print("File not found")
                 pass  # File not found, continue waiting
+            except ValueError:
+                print("No valid  progress num")
+                pass
 
             time.sleep(1)  # Wait for a short period before checking again
+            processing_seconds += 1
         if os.path.exists('progress.txt'):
             os.remove('progress.txt')
-        stderr = process.stderr.read().decode('utf-8')
-        if stderr:
-            print(f"Error: {stderr}")
+        # stderr = process.stderr.read().decode('utf-8')
+        # if stderr:
+        #     print(f"Error: {stderr}")
         # After the subprocess has finished and the progress file has been deleted
         socketio.emit('video_processed', {'filename': filename})   
     except Exception as e:
         print(f"Error: {e}")
     
+@app.route('/reprocess', methods=['POST'])
+def reprocess():
+    data = request.get_json()
+    print("Received data:", data)  # Add this line to log the received data
+    filename = data.get('filename')
+    if filename:
+        socketio.start_background_task(reprocess_video, filename)
+        return jsonify({'message': 'Video re-processing started'}),  200
+    return jsonify({'message': 'No video file provided'}),  400
+
+def reprocess_video(filename):
+    # Run the different script on the output_tracks.csv file\
+    reprocess_script_path = "../Impr-Assoc-counter_demo/reprocess_tracks.py"
+    base_path = "static/outputs/"
+    video_name = filename.split('.')[0]
+    base_path = os.path.join(base_path, video_name)
+    run_folders = glob.glob(os.path.join(base_path, 'run_*'))
+    # Sort the folders by creation time and get the most recent one
+    run_folders.sort(key=os.path.getctime, reverse=True)
+    most_recent_run = run_folders[0] if run_folders else None
+
+
+    # Check if there is a most recent run folder
+    if most_recent_run:
+        tracks_input_file = os.path.join(most_recent_run, f'{video_name}_tracks_output.txt')
+        output_counts_path = os.path.join(most_recent_run, f'{video_name}_counts_output.txt') # overwrite the counts file
+        line_crossings_path = os.path.join(most_recent_run, f'{video_name}_line_crossings.txt')
+        # Check if the tracks file exists
+        print(tracks_input_file)
+        if os.path.exists(tracks_input_file):
+            try:
+                    # Call the reprocess script
+                process = subprocess.Popen(['python3', reprocess_script_path,
+                                    '--count_lines_file', 'coordinates.txt', 
+                                    '--tracks_input_file', tracks_input_file,
+                                    '--output_counts_file', output_counts_path,
+                                    '--line_crossings', line_crossings_path
+                                    ],
+                                    # stdout=subprocess.PIPE,
+                                    # stderr=subprocess.PIPE
+                                    )
+                socketio.emit('progress', {'data': 0})
+
+                processing_seconds = 0
+
+                while process.poll() is None:
+                    # print("Waiting for progress")
+                    try:
+                        with open('progress.txt', 'r') as f:
+                            progress = float(f.read().strip())
+                            socketio.emit('progress', {'data': progress, 'time': calculate_estimated_time_remaining(progress, processing_seconds)})
+                            print(f"Progress: {progress}")
+                    except FileNotFoundError:
+                        print("Progress file not found")
+                        pass  # File not found, continue waiting
+                    except ValueError:
+                        print("No valid progress num")
+                        pass
+                    # Read from stdout and stderr
+                    # stdout = process.stdout.readline().decode('utf-8')
+                    # stderr = process.stderr.readline().decode('utf-8')
+
+                    # # Print to server logs
+                    # if stdout:
+                    #     print(f"STDOUT: {stdout}")
+                    # if stderr:
+                    #     print(f"STDERR: {stderr}")
+
+                    time.sleep(1)  # Wait for a short period before checking again
+                    processing_seconds += 1
+                if os.path.exists('progress.txt'):
+                    # Progress file exists, emit 100% progress and delete the file
+                    socketio.emit('progress', {'data': 100})
+                    os.remove('progress.txt')
+                # stderr = process.stderr.read().decode('utf-8')
+                # if stderr:
+                #     print(f"Error: {stderr}")
+                # After the subprocess has finished and the progress file has been deleted
+                socketio.emit('video_processed', {'filename': filename})   
+            except Exception as e:
+                print(f"Error: {e}")
+        else:  
+            print("Tracks file not found in the most recent run")
+
+
+
 @app.route('/counts/<filename>', methods=['GET'])
 def get_counts(filename):
     # Construct the path to the counts file
@@ -129,6 +292,41 @@ def get_counts(filename):
             return jsonify({'counts': str(counts_data)})
         else:
             return jsonify({'message': 'Counts file not found in the most recent run'}),  404
+    else:
+        return jsonify({'message': 'No runs found for the video'}),  404
+
+@app.route('/get_crossings_data/<filename>', methods=['POST'])
+def get_crossings_data(filename):
+    # Construct the path to the counts file
+    video_name = filename.split('.')[0]
+    base_path = os.path.join('static/outputs', video_name)
+    print(base_path)
+    run_folders = glob.glob(os.path.join(base_path, 'run_*'))
+    # Sort the folders by creation time and get the most recent one
+    run_folders.sort(key=os.path.getctime, reverse=True)
+    most_recent_run = run_folders[0] if run_folders else None
+    # Check if there is a most recent run folder
+    if most_recent_run:
+        data = request.json
+        fps = data['fps']  # Get fps from the request data
+
+        # Read the line_crossings.txt file and parse the data
+        line_crossings_file_path = os.path.join(most_recent_run, f'{video_name}_line_crossings.txt')
+        crossings_df = pd.read_csv(line_crossings_file_path, header=None, skiprows=1, sep=',')
+        print(f"crossings_df: {crossings_df}")
+        crossings_df.columns = ['frame_num', 'line_num', 'class_name', 'direction']
+        
+        # Calculate timestamps and aggregate by hour
+        crossings_df['timestamp'] = pd.to_datetime(crossings_df['frame_num'] / fps, unit='s')
+        crossings_df.set_index('timestamp', inplace=True)
+        hourly_counts = crossings_df.groupby([pd.Grouper(freq='H'), 'line_num', 'class_name', 'direction']).size()
+        
+        # Prepare the data for Plotly
+        # Convert to JSON or a suitable format for the frontend
+        plotly_data = hourly_counts.reset_index().to_json(orient='records')
+        print(f"plotly_data: {plotly_data}")
+        
+        return jsonify(plotly_data)
     else:
         return jsonify({'message': 'No runs found for the video'}),  404
 
