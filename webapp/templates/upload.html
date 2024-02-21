@@ -34,13 +34,13 @@
         <canvas id="canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: auto;"></canvas>
     </div>
 
-    <!-- <div class="form-group">
+    <div class="form-group">
         <label for="save-video">Save Annotated Video</label>
         <select class="form-control" id="save-video">
             <option value="yes">Yes</option>
             <option value="no">No</option>
         </select>
-    </div> -->
+    </div>
 
     <div class="button-container">
         <button id="draw-button" class="btn btn-secondary mt-3" style="display: none;">Draw Lines</button>
@@ -180,7 +180,10 @@
                     $('#process-button').show();  // Show the "Process Video" button
                     $('#reprocess-button').show();  // Show the "Reprocess Counts" button
                     $('#clear-lines-button').show();  // Show the "Clear Lines" button
-                    $('#video-player').attr('src', '/uploads/' + response.filename).css({width: '100%', height: '100%'}).prop('controls', true).on('loadedmetadata', function() {
+                    var video_name = response.filename.split('.')[0];
+                    var video_filename = response.filename;
+
+                    $('#video-player').attr('src', `/stream_video?filename=${encodeURIComponent(video_filename)}`, 'type', 'video/mp4').css({width: '100%', height: '100%'}).prop('controls', true).on('loadedmetadata', function() {
                         var canvas = $('#canvas')[0];
                         var ctx = canvas.getContext('2d');
                         var aspectRatio = this.videoHeight / this.videoWidth;
@@ -190,7 +193,7 @@
                         ctx.clearRect(0, 0, canvas.width, canvas.height);
                         $('#canvas').css("top", yOffset).attr({width: this.clientWidth, height: canvasHeight}).css('pointer-events', 'none').show();
                     }).show();
-                    var video_name = response.filename.split('.')[0];
+
                     $('#download-counts-link').attr('href', '/download_counts/' + video_name);
                     $('#download-processed-video-link').attr('href', '/download_processed_video/' + video_name);
                 }
@@ -256,7 +259,7 @@
                     });
                     // Create a label element for the line
                     var label = document.createElement('span');
-                    label.textContent = 'Line ' + Object.keys(labels).length;  // Use the number of lines as the label
+                    label.textContent = 'Line ' + ((Object.keys(labels).length - 2));  // Use the number of lines as the label
                     label.style.position = 'absolute';
                     label.style.color = 'red';
                     label.style.fontSize = '15px';
@@ -361,13 +364,15 @@
         $('#process-button').on('click', function() {
             $('#processing-progress').css('width', 0 + '%').attr('aria-valuenow', 0);
             var formData = new FormData(document.getElementById('upload-form'));
-            var filename = formData.get('video').name;  // Get the filename from the form data
+            var filename = formData.get('video').name;  // Assuming 'video' is the name attribute of your file input
+            var saveVideo = $('#save-video').val(); // Get the dropdown value
+            
+            formData.append('save_video', saveVideo); // Append the choice to your form data
+            formData.append('filename', filename); // Append the filename to your form data
+            
             fetch('/process', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({filename: filename})  // Pass the filename as JSON
+                body: formData  // Use FormData directly
             })
             .then(response => {
                 if (!response.ok) {
@@ -382,6 +387,8 @@
                 console.error('There has been a problem with your fetch operation:', error);
             });
         });
+
+
 
         $('#reprocess-button').on('click', function() {
             var formData = new FormData(document.getElementById('upload-form'));
@@ -563,7 +570,7 @@
                 });
             console.log('get crossings data');
 
-            var videoFPS = 25;  // Set the video FPS to 30
+            var videoFPS = 30;  // Set the video FPS to 30
             fetch('/get_crossings_data/' + msg.filename, {
                 method: 'POST',
                 headers: {

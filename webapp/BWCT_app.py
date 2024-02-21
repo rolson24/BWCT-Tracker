@@ -23,6 +23,8 @@ app.secret_key = "supersecretkey"
 
 videos = UploadSet('videos', ALL)
 
+video_path = None
+
 app.config['UPLOADED_VIDEOS_DEST'] = 'static/uploads'
 configure_uploads(app, videos)
 
@@ -30,17 +32,47 @@ configure_uploads(app, videos)
 
 @app.route('/', methods=['GET', 'POST'])
 def upload():
+    global video_path
     if request.method == 'POST':
         video = request.files.get('video')
         if video:
             filename = secure_filename(video.filename)
-            video.save(os.path.join(app.config['UPLOADED_VIDEOS_DEST'], filename))
+            video_path = os.path.join(app.config['UPLOADED_VIDEOS_DEST'], filename)
+            video.save(video_path)
+            # os.system(f"ffmpeg -i {video_path} -c:v libx264 -preset veryfast -crf 23 {app.config['UPLOADED_VIDEOS_DEST']}/{filename.split('.')[0]}.mp4")
             if exists('coordinates.txt'):
                 remove('coordinates.txt')
             return jsonify({'message': 'Video uploaded', 'filename': filename})
         return jsonify({'message': 'No video provided'}), 400
     else:
         return render_template('upload.html')  # replace 'index.html' with your actual template
+    
+@app.route('/stream_video')
+def stream_video():
+    filename = request.args.get('filename')  # Get filename from query parameter
+    if not filename:
+        return "Filename not provided", 400
+    filename = os.path.join(app.config['UPLOADED_VIDEOS_DEST'], filename)
+
+    def generate():
+        cmd = [
+            'ffmpeg',
+            '-i', filename,  # Use the dynamically provided filename
+            '-f', 'mp4',
+            '-vcodec', 'libx264',
+            '-preset', 'veryfast',
+            '-movflags', 'frag_keyframe+empty_moov',
+            '-'
+        ]
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        while True:
+            data = proc.stdout.read(4096)
+            if not data:
+                break
+            yield data
+        proc.wait()
+
+    return Response(generate(), mimetype='video/mp4')
 
 @app.route('/download_counts/<filename>')
 def download_counts(filename):
@@ -125,35 +157,67 @@ def calculate_estimated_time_remaining(progress, processing_seconds):
         estimated_time_remaining = None
     return seconds_to_hms(estimated_time_remaining)
 
+
 @app.route('/process', methods=['POST'])
 def process():
-    data = request.get_json()
-    print("Received data:", data)  # Add this line to log the received data
-    filename = data.get('filename')
-    if filename:
-        socketio.start_background_task(process_video, filename)
-        return jsonify({'message': 'Video processing started'}),  200
-    return jsonify({'message': 'No video file provided'}),  400
+    # Use request.form or request.files to access the data
+    filename = request.form.get('filename')
+    save_video = request.form.get('save_video')
+    if save_video == "yes":
+        save_video = True
+    elif save_video == "no":
+        save_video = False
 
-def process_video(filename):
+    print("Received filename:", filename)
+    print("Save video option:", save_video)
+
+    if filename:
+        # Pass both filename and save_video to your processing function
+        socketio.start_background_task(process_video, filename, save_video)
+        return jsonify({'message': 'Video processing started'}), 200
+    return jsonify({'message': 'No video file provided'}), 400
+
+def process_video(filename, save_video):
     # Call your track.py script here
     print("Start processing video")
     script_path = "../Impr-Assoc-counter_demo/track.py"
     output_path = "static/outputs/"
-    model_path = "../Impr-Assoc-counter_demo/models/yolov8s-2024-02-16-best_fp16_trt.engine"
+    # model_path = "../Impr-Assoc-counter_demo/models/yolov8s-2024-02-16-best_fp16_trt.engine"
+    model_path = "../Impr-Assoc-counter_demo/models/yolov8s-2024-02-14-best_fp16_trt.engine"
+
     video_path = os.path.join(app.config['UPLOADED_VIDEOS_DEST'], filename)
     try:
-        process = subprocess.Popen(
-            [
-                "python", script_path,
-                "--source_video_path", video_path,
-                "--output_dir", output_path,
-                "-f", "coordinates.txt",
-                "-c", model_path
-            ],
-            #  stdout=subprocess.PIPE,
-            #  stderr=subprocess.PIPE
-             )
+        if save_video:
+            process = subprocess.Popen(
+                [
+                    "python", 
+                    # "-m", "cProfile",
+                    # "-s", "cumtime",
+                    script_path,
+                    "--source_video_path", video_path,
+                    "--output_dir", output_path,
+                    "-f", "coordinates.txt",
+                    "-c", model_path,
+                    "--save-frames"
+                ],
+                #  stdout=subprocess.PIPE,
+                #  stderr=subprocess.PIPE
+                )
+        else:
+            process = subprocess.Popen(
+                [
+                    "python", 
+                    # "-m", "cProfile",
+                    # "-s", "cumtime",
+                    script_path,
+                    "--source_video_path", video_path,
+                    "--output_dir", output_path,
+                    "-f", "coordinates.txt",
+                    "-c", model_path
+                ],
+                #  stdout=subprocess.PIPE,
+                #  stderr=subprocess.PIPE
+                )
         socketio.emit('progress', {'data': 0})
         processing_seconds = 0
         while process.poll() is None:

@@ -20,6 +20,9 @@ sys.path.append('.')
 from loguru import logger
 
 import supervision as sv
+from supervision import VideoSink, VideoInfo, get_video_frames_generator
+from typing import Callable, Generator, Optional, Tuple
+
 
 # from yolox.data.data_augment import preproc
 # from yolox.exp import get_exp
@@ -55,7 +58,7 @@ def make_parser():
   parser.add_argument("-c", "--ckpt", default=None, type=str, help="path to yolo weights file")
   parser.add_argument("-expn", "--experiment-name", type=str, default=None)
   parser.add_argument("--default-parameters", dest="default_parameters", default=True, action="store_true", help="use the default parameters as in the paper")
-  # parser.add_argument("--save-frames", dest="save_frames", default=False, action="store_true", help="save sequences with tracks.")
+  parser.add_argument("--save-frames", dest="save_frames", default=False, action="store_true", help="save sequences with tracks.")
 
   # Detector
   parser.add_argument("--yolo_version", default="yolov8", type=str, help="yolo model architecture. Can be 'yolov8' or 'yolo-nas'")
@@ -132,16 +135,70 @@ def parse_count_lines_file(count_lines_file):
   logger.info(f"lines pre replace: {lines}")
   lines = [[eval(coord.replace('(', '').replace(')', '')) for coord in line] for line in lines]
   return lines
+
+def process_video(
+    source_path: str,
+    target_path: str,
+    callback: Callable[[np.ndarray, int], np.ndarray],
+    codec: str = "mp4v",
+    save_video: bool = True
+) -> None:
+    """
+    Process a video file by applying a callback function on each frame
+        and saving the result to a target video file.
+
+    Args:
+        source_path (str): The path to the source video file.
+        target_path (str): The path to the target video file.
+        callback (Callable[[np.ndarray, int], np.ndarray]): A function that takes in
+            a numpy ndarray representation of a video frame and an
+            int index of the frame and returns a processed numpy ndarray
+            representation of the frame.
+        codec (str): The codec to write the target video to. Default 'mp4v'
+        save_video (bool): Whether to write the video or not. Default True.
+
+    Examples:
+        ```python
+        import supervision as sv
+
+        def callback(scene: np.ndarray, index: int) -> np.ndarray:
+            ...
+
+        process_video(
+            source_path='...',
+            target_path='...',
+            callback=callback
+        )
+        ```
+    """
+    source_video_info = VideoInfo.from_video_path(video_path=source_path)
+    if save_video:
+      with VideoSink(target_path=target_path, video_info=source_video_info, codec=codec) as sink:
+          for index, frame in enumerate(
+              get_video_frames_generator(source_path=source_path)
+          ):
+              result_frame = callback(frame, index)
+              sink.write_frame(frame=result_frame)
+    else:
+      for index, frame in enumerate(
+        get_video_frames_generator(source_path=source_path)
+      ):
+          callback(frame, index)
 	 
 if __name__ == "__main__":
   args = make_parser().parse_args()
 
   SOURCE_VIDEO_PATH = args.source_video_path
   SOURCE_VIDEO_NAME = osp.basename(SOURCE_VIDEO_PATH).split('.')[0]
+  SOURCE_VIDEO_EXT = osp.basename(SOURCE_VIDEO_PATH).split('.')[1]
+  if SOURCE_VIDEO_EXT == "avi":
+    SOURCE_VIDEO_CODEC = "MJPG"
+  elif SOURCE_VIDEO_EXT == "mp4":
+    SOURCE_VIDEO_CODEC = "mp4v"
   OUTPUT_DIR = args.output_dir # Workspace/analysis/analysis-outputs/
   THIS_RUN_FOLDER = create_run_folder(f"{OUTPUT_DIR}/{SOURCE_VIDEO_NAME}")
-  TARGET_VIDEO_PATH_ANN = f"{THIS_RUN_FOLDER}/{SOURCE_VIDEO_NAME}_annotated.mp4"
-  TARGET_VIDEO_PATH_CLEAN = f"{THIS_RUN_FOLDER}/{SOURCE_VIDEO_NAME}_recolored.mp4"; print(TARGET_VIDEO_PATH_CLEAN)
+  TARGET_VIDEO_PATH_ANN = f"{THIS_RUN_FOLDER}/{SOURCE_VIDEO_NAME}_annotated.{SOURCE_VIDEO_EXT}"
+  TARGET_VIDEO_PATH_CLEAN = f"{THIS_RUN_FOLDER}/{SOURCE_VIDEO_NAME}_recolored.{SOURCE_VIDEO_EXT}"; print(TARGET_VIDEO_PATH_CLEAN)
   TRACK_OUTPUT_FILE_PATH = f"{THIS_RUN_FOLDER}/{SOURCE_VIDEO_NAME}_tracks_output.txt"
   # Check if the track file already exists and delete it if it does
   if os.path.exists(TRACK_OUTPUT_FILE_PATH):
@@ -346,7 +403,10 @@ if __name__ == "__main__":
   fps_monitor = sv.FPSMonitor()
 
   if args.color_calib_enable:
-    out = cv2.VideoWriter(TARGET_VIDEO_PATH_CLEAN, cv2.VideoWriter_fourcc(*'mp4v'), video_info.fps, (video_info.width, video_info.height))
+    if SOURCE_VIDEO_EXT == 'avi':
+      out = cv2.VideoWriter(TARGET_VIDEO_PATH_CLEAN, cv2.VideoWriter_fourcc(*'MJPG'), video_info.fps, (video_info.width, video_info.height))
+    else:
+      out = cv2.VideoWriter(TARGET_VIDEO_PATH_CLEAN, cv2.VideoWriter_fourcc(*'mp4v'), video_info.fps, (video_info.width, video_info.height))
     if args.color_calib_device=="cpu":
       '''for cpu color correction'''
       color_source = cv2.imread(COLOR_SOURCE_PATH)
@@ -494,11 +554,14 @@ if __name__ == "__main__":
 
   ''' Now process the whole video '''
   logger.info(f"saving results to {TRACK_OUTPUT_FILE_PATH}")
-
-  sv.process_video( 
+  logger.info(f"Save frames: {args.save_frames}")
+  process_video( 
     source_path = SOURCE_VIDEO_PATH, 
     target_path = TARGET_VIDEO_PATH_ANN,
-    callback=callback
+    callback=callback,
+    # codec=SOURCE_VIDEO_CODEC
+    codec="mp4v",
+    save_video=args.save_frames
   )
 if args.color_calib_enable:
   out.release() 
