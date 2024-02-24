@@ -18,7 +18,7 @@ class STrack(BaseTrack):
     def __init__(self, tlwh, score, class_id, feat=None, feat_history=50):
 
         # wait activate
-        self._tlwh = np.asarray(tlwh, dtype=np.float)
+        self._tlwh = np.asarray(tlwh, dtype=float)
         self.kalman_filter = None
         self.mean, self.covariance = None, None
         self.is_activated = False
@@ -348,7 +348,7 @@ class ConfTrack:
         detections = Detections.empty()
         if len(tracks) > 0:
             detections.xyxy = np.array(
-                [track.tlbr for track in tracks], dtype=np.float32
+                [track.tlbr for track in tracks], dtype=float
             )
             detections.class_id = np.array(
                 [int(t.cls) for t in tracks], dtype=int
@@ -357,7 +357,7 @@ class ConfTrack:
                 [int(t.track_id) for t in tracks], dtype=int
             )
             detections.confidence = np.array(
-                [t.score for t in tracks], dtype=np.float32
+                [t.score for t in tracks], dtype=float
             )
         else:
             detections.tracker_id = np.array([], dtype=int)

@@ -11,9 +11,9 @@ import tensorflow as tf
 import json
 
 
-from YOLOv8_TensorRT import TRTModule  # isort:skip
-from YOLOv8_TensorRT.torch_utils import det_postprocess
-from YOLOv8_TensorRT.utils import letterbox, blob, path_to_list
+# from YOLOv8_TensorRT import TRTModule  # isort:skip
+# from YOLOv8_TensorRT.torch_utils import det_postprocess
+# from YOLOv8_TensorRT.utils import letterbox, blob, path_to_list
 
 sys.path.append('.')
 
@@ -233,21 +233,21 @@ if __name__ == "__main__":
       # dict maping class_id to class_name
       CLASS_NAMES_DICT = yolo_model.model.names
 
-    elif MODEL_EXTENSION == "engine":
-      #engine = "yolov8s.engine"
-      global Engine
-      global device
-      global H, W
-      # Load a model from an .engine file
-      device = torch.device(args.device)
-      Engine = TRTModule(MODEL, device)
-      H, W = Engine.inp_info[0].shape[-2:]
-      print(H, W)
-      Engine.set_desired(['num_dets', 'bboxes', 'scores', 'labels'])
+    # elif MODEL_EXTENSION == "engine":
+    #   #engine = "yolov8s.engine"
+    #   global Engine
+    #   global device
+    #   global H, W
+    #   # Load a model from an .engine file
+    #   device = torch.device(args.device)
+    #   Engine = TRTModule(MODEL, device)
+    #   H, W = Engine.inp_info[0].shape[-2:]
+    #   print(H, W)
+    #   Engine.set_desired(['num_dets', 'bboxes', 'scores', 'labels'])
 
-      # yolo_model = YOLO(MODEL, task="detect")
-      CLASS_NAMES_DICT = {1:"Pedestrians", 0:"Bikes", 2:"Scooters", 3:"Wheelchairs"} # for yolov8n-2023-11-03 change for yolov8s-2024-02-14
-      #yolo_model = torch.hub.load(MODEL, 'custom',
+    #   # yolo_model = YOLO(MODEL, task="detect")
+    #   CLASS_NAMES_DICT = {1:"Pedestrians", 0:"Bikes", 2:"Scooters", 3:"Wheelchairs"} # for yolov8n-2023-11-03 change for yolov8s-2024-02-14
+    #   #yolo_model = torch.hub.load(MODEL, 'custom',
     else:
       yolo_model = YOLO(MODEL)
       # yolo_model.fuse()
@@ -359,23 +359,21 @@ if __name__ == "__main__":
   elif OBJECT_TRACKER == "LSTMTrack":
     from LSTMTrack.LSTMTrack import STrack
     # currently load model 14 and then load model 15 bbox weights, need to fix
-    LSTM_model = tf.keras.models.load_model("/content/drive/MyDrive/BWCT-tracker/Impr-Assoc-counter_demo/models/LSTM_model_14_and_15_bbL")
+    LSTM_model = tf.keras.models.load_model("/home/object_track_count_analysis/BWCT-tracker/Impr-Assoc-counter_demo/models/LSTM_model_14_and_15_bb")
     # LSTM_model.load_weights("./models/model_15_bb_saved_weights.h5")
     if args.default_parameters:
       STrack.shared_LSTM_predictor = LSTM_predictor(LSTM_model)
-      Tracker = LSTMTrack(model=LSTM_model,
-                          with_reid=args.with_reid,
-                          torchreid_model=r"/content/drive/MyDrive/BWCT-tracker/Impr-Assoc-counter_demo/models/osnet_ms_d_c.pth.tar", # need to move to folder
+      Tracker = LSTM_Track(model=LSTM_model,
+                          torchreid_model=r"/home/object_track_count_analysis/BWCT-tracker/Impr-Assoc-counter_demo/models/osnet_ms_d_c.pth.tar", # need to move to folder
                           frame_rate=video_info.fps)
     else:
       STrack.shared_LSTM_predictor = LSTM_predictor(LSTM_model)
       # add in params
-      Tracker = LSTMTrack(model=LSTM_model,
-                          with_reid=args.with_reid,
+      Tracker = LSTM_Track(model=LSTM_model,
                           track_thresh=args.track_low_thresh,
                           track_buffer=args.track_buffer,
                           match_thresh=args.track_match_thresh,
-                          torchreid_model=r"/content/drive/MyDrive/BWCT-tracker/Impr-Assoc-counter_demo/models/osnet_ms_d_c.pth.tar", # need to move to folder
+                          torchreid_model=r"/home/object_track_count_analysis/BWCT-tracker/Impr-Assoc-counter_demo/models/osnet_ms_d_c.pth.tar", # need to move to folder
                           frame_rate=video_info.fps)
   elif OBJECT_TRACKER == "BYTETrack":
     if args.default_parameters:
@@ -439,10 +437,10 @@ if __name__ == "__main__":
       class_counts[val+"_out"] = 0
     line_counts.append(class_counts)
 
-
+  total_fps = 0
 
   def callback(frame: np.ndarray, frame_id: int, color_calib_device='cpu') -> np.ndarray:
-    global source_img_stats, out, fps_monitor, line_counts, args
+    global source_img_stats, out, fps_monitor, line_counts, args, total_fps, total_frames
     if args.color_calib_enable:
       ''' Color Calibration '''
       if args.color_calib_device == 'cpu':
@@ -535,14 +533,16 @@ if __name__ == "__main__":
                 f.write(f"{frame_id},{i},{CLASS_NAMES_DICT[obj]},out\n")
 
     fps_monitor.tick()
+    total_fps += fps_monitor()
+    total_frames = frame_id + 1
     ''' Log Time'''
-    if frame_id % 20 == 0:
-      # logger.info('Processing frame {}/{} ({:.2f} fps)'.format(frame_id, video_info.total_frames, max(1e-5, fps_monitor())))
+    if frame_id % 1000 == 0:
+      logger.info('Processing frame {}/{} ({:.2f} fps)'.format(frame_id, video_info.total_frames, max(1e-5, total_fps/total_frames)))
       progress = frame_id / video_info.total_frames * 100  # Calculate progress as a percentage
-      with open('progress.txt', 'w') as f:
-        f.write(str(progress))
-      with open('track_logs.txt', '+a') as f:
-        f.write('Processing frame {}/{} ({:.2f} fps)'.format(frame_id, video_info.total_frames, max(1e-5, fps_monitor())))
+      # with open('progress.txt', 'w') as f:
+      #   f.write(str(progress))
+      # with open('track_logs.txt', '+a') as f:
+      #   f.write('Processing frame {}/{} ({:.2f} fps)'.format(frame_id, video_info.total_frames, max(1e-5, fps_monitor())))
       # logger.info(f"Write Progress: {progress}")
 
     # ''' Log Time'''
@@ -574,5 +574,5 @@ with open(COUNT_OUTPUT_FILE_PATH, 'a+', newline='', encoding='UTF8') as f:
     writer.writerow([f"line {i}"])
     for key, val in line_count.items():
       writer.writerow([key, val])
-  writer.writerow([f"Average FPS: {fps_monitor()}"])
+  writer.writerow([f"Average FPS: {total_fps/total_frames}"])
 

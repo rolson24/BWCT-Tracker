@@ -15,6 +15,8 @@ from scipy.optimize import linear_sum_assignment
 
 from torchreid import utils as ut
 
+import cv2
+
 
 class STrack(BaseTrack):
     # shared_kalman = KalmanFilter()
@@ -85,7 +87,7 @@ class STrack(BaseTrack):
         # )
 
     @staticmethod
-    def multi_predict(stracks):
+    def multi_predict(stracks, res):
         # if len(stracks) > 0:
         #     multi_mean = []
         #     multi_covariance = []
@@ -113,7 +115,7 @@ class STrack(BaseTrack):
                 multi_track_len[i] = int(st.tracklet_len)
                 # print("This is the sequence we want to pred in multi_pred: ", multi_seq[i], multi_track_len[i])
 
-            multi_pred = STrack.shared_LSTM_predictor.multi_predict(multi_seq, multi_track_len)
+            multi_pred = STrack.shared_LSTM_predictor.multi_predict(multi_seq, multi_track_len, res)
             for i, pred_vect in enumerate(multi_pred):
                 track = stracks[i]
                 track.pred_vect = pred_vect
@@ -298,13 +300,11 @@ class STrack(BaseTrack):
         return "OT_{}_({}-{})".format(self.track_id, self.start_frame, self.end_frame)
 
 
-def detections2boxes(detections: Detections, features: np.ndarray) -> np.ndarray:
+def detections2boxes(detections: Detections) -> np.ndarray:
     """
     Convert Supervision Detections to numpy tensors for further computation.
     Args:
         detections (Detections): Detections/Targets in the format of sv.Detections.
-        features (ndarray): The corresponding image features of each detection.
-        Has shape [N, num_features]
     Returns:
         (np.ndarray): Detections as numpy tensors as in
             `(x_min, y_min, x_max, y_max, confidence, class_id, feature_vect)` order.
@@ -313,8 +313,7 @@ def detections2boxes(detections: Detections, features: np.ndarray) -> np.ndarray
         (
             detections.xyxy,
             detections.confidence[:, np.newaxis],
-            detections.class_id[:, np.newaxis],
-            features
+            detections.class_id[:, np.newaxis]
         )
     )
 
@@ -539,7 +538,7 @@ class LSTM_Track:
           )
 
 
-    def update_with_detections(self, detections: Detections, detection_features: np.ndarray, img, resize) -> Detections:
+    def update_with_detections(self, detections: Detections, img) -> Detections:
         """
         Updates the tracker with the provided detections and
             returns the updated detection results.
@@ -581,7 +580,7 @@ class LSTM_Track:
   
         tracks = self.update_with_tensors(
             # maybe extract features here
-            tensors=detections2boxes(detections=detections, features=detection_features),
+            tensors=detections2boxes(detections=detections),
             img=img, res=img.shape
         ) 
         detections = Detections.empty()
@@ -624,7 +623,9 @@ class LSTM_Track:
         class_ids = tensors[:, 5]
         scores = tensors[:, 4]
         bboxes = tensors[:, :4]
-        features = tensors[:,6:]
+        # features = tensors[:,6:]
+
+
 
         remain_inds = scores > self.track_thresh
         inds_low = scores > 0.1
@@ -633,6 +634,14 @@ class LSTM_Track:
         inds_second = np.logical_and(inds_low, inds_high)
         dets_second = bboxes[inds_second]
         dets = bboxes[remain_inds]
+
+        '''Extract embeddings '''
+        if self.with_reid: 
+        	# i think this will work
+          if img is not None:
+            features = extract_features(bboxes, img, self.feature_extractor)
+          # else:
+            # print("img is empty!")
 
         features_second = features[inds_second]
         features = features[remain_inds]
@@ -643,6 +652,8 @@ class LSTM_Track:
         class_ids_keep = class_ids[remain_inds]
         class_ids_second = class_ids[inds_second]
 
+
+              
         if len(dets) > 0:
             """Detections"""
             detections = [
@@ -652,13 +663,7 @@ class LSTM_Track:
         else:
             detections = []
 
-        '''Extract embeddings '''
-        if self.with_reid: 
-        	# i think this will work
-          if img is not None:
-            features_keep = extract_features(dets, img, self.feature_extractor)
-          else:
-            print("img is empty!")
+
 
         """ Add newly detected tracklets to tracked_stracks"""
         unconfirmed = []
@@ -677,13 +682,13 @@ class LSTM_Track:
         # print(f"num of tracks: {len(strack_pool)}   num of dets: {len(detections)}")
         dists = iou_distance(strack_pool, detections)
         first_iou_dists = dists.copy()
-        print("first iou cost: ", dists)
+        # print("first iou cost: ", dists)
         feature_dists = feature_distance(strack_pool, detections)
-        print("feature cost: ", feature_dists)
+        # print("feature cost: ", feature_dists)
         dists = fuse_bb_score(dists, detections)
-        print("fused iou and conf cost: ", dists)
+        # print("fused iou and conf cost: ", dists)
         feature_dists = fuse_feature_cost(dists, feature_dists, feature_weight=0.8)
-        print("fused feature and iou and conf cost: ", feature_dists)
+        # print("fused feature and iou and conf cost: ", feature_dists)
         matches, u_track, u_detection = linear_assignment(
             feature_dists, thresh=self.match_thresh
         )
@@ -717,15 +722,15 @@ class LSTM_Track:
             if strack_pool[i].state == TrackState.Tracked
         ]
         dists = iou_distance(r_tracked_stracks, detections_second)
-        if dists.shape[1] >= 1:
-          print("frame num: ", self.frame_id)
-          print("second iou cost: ", dists)
+        # if dists.shape[1] >= 1:
+          # print("frame num: ", self.frame_id)
+          # print("second iou cost: ", dists)
         feature_dists = feature_distance(r_tracked_stracks, detections_second)
-        if dists.shape[1] >= 1:
-          print("second feature cost: ", feature_dists)
+        # if dists.shape[1] >= 1:
+          # print("second feature cost: ", feature_dists)
         fused_dists = fuse_feature_cost(dists, feature_dists)
-        if dists.shape[1] >= 1:
-          print("second fused feature and iou cost: ", fused_dists)
+        # if dists.shape[1] >= 1:
+          # print("second fused feature and iou cost: ", fused_dists)
         matches, u_track, u_detection_second = linear_assignment(
             fused_dists, thresh=0.65 # adjust this thresh
         )
@@ -750,10 +755,10 @@ class LSTM_Track:
         """Deal with unconfirmed tracks, usually tracks with only one beginning frame"""
         detections = [detections[i] for i in u_detection]
         dists = iou_distance(unconfirmed, detections)
-        print("unconfirmed iou cost: ", dists)
+        # print("unconfirmed iou cost: ", dists)
         # probably want to include feature cost in this.
         dists = fuse_bb_score(dists, detections)
-        print("unconfirmed fused iou and conf cost: ", dists)
+        # print("unconfirmed fused iou and conf cost: ", dists)
         matches, u_unconfirmed, u_detection = linear_assignment(
             dists, thresh=0.7
         )
@@ -801,8 +806,8 @@ class LSTM_Track:
         #   print("frame num: ", self.frame_id)
         #   print("diff num of active tracks: ", first_iou_dists)
         #   self.prev_len = len(output_stracks)
-        if self.frame_id % 10 == 0:
-          print(f"size of removed_tracks: {len(self.removed_tracks)}, size of lost tracks: {len(self.lost_tracks)}, size of tracked: {len(self.tracked_tracks)}")
+        # if self.frame_id % 10 == 0:
+          # print(f"size of removed_tracks: {len(self.removed_tracks)}, size of lost tracks: {len(self.lost_tracks)}, size of tracked: {len(self.tracked_tracks)}")
         return output_stracks
 
 

@@ -14,6 +14,11 @@ Impr-Assoc-counter_demo/yolov8n_trt_fp16_output.txt
 Impr-Assoc-counter_demo/yovov8n_trt_output.txt
 Impr-Assoc-counter_demo/03-2023-10-31T14-2M-ECSCMacLeanBridgeEast/*
 Impr-Assoc-counter_demo/output_dir/*
+Impr-Assoc-counter_demo/analysis_outputs/
+Impr-Assoc-counter_demo/videos/*
+Impr-Assoc-counter_demo/.ipynb_checkpoints/
+Impr-Assoc-counter_demo/ConfTrack/.ipynb_checkpoints/
+Impr-Assoc-counter_demo/LSTMTrack/.ipynb_checkpoints/
 webapp/static/*
 webapp/coordinates.txt
 streamlit_webapp/*
