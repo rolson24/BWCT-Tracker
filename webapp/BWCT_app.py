@@ -99,6 +99,7 @@ def download_counts(filename):
 def download_video(filename):
     # Construct the path to the counts file
     video_name = filename.split('.')[0]
+    video_ext = filename.split('.')[1]
     base_path = os.path.join('static/outputs', video_name)
     run_folders = glob.glob(os.path.join(base_path, 'run_*'))
     # Sort the folders by creation time and get the most recent one
@@ -107,7 +108,7 @@ def download_video(filename):
     # Check if there is a most recent run folder
     if most_recent_run:
         # Construct the path to the counts file within the most recent run folder
-        counts_file_path = os.path.join(most_recent_run, f'{video_name}_annotated.mp4')
+        counts_file_path = os.path.join(most_recent_run, f'{video_name}_annotated.{video_ext}')
         # Check if the counts file exists
         if os.path.exists(counts_file_path):
             return send_file(counts_file_path, as_attachment=True)
@@ -182,8 +183,9 @@ def process_video(filename, save_video):
     print("Start processing video")
     script_path = "../Impr-Assoc-counter_demo/track.py"
     output_path = "static/outputs/"
-    # model_path = "../Impr-Assoc-counter_demo/models/yolov8s-2024-02-16-best_fp16_trt.engine"
-    model_path = "../Impr-Assoc-counter_demo/models/yolov8s-2024-02-14-best_fp16_trt.engine"
+    model_path = "../Impr-Assoc-counter_demo/models/yolov8s-2024-02-16-best_fp16_trt.engine"
+    cc_source_path = "../Impr-Assoc-counter_demo/reference-image-test.jpg"
+    # model_path = "../Impr-Assoc-counter_demo/models/yolov8s-2024-02-14-best_fp16_trt.engine"
 
     video_path = os.path.join(app.config['UPLOADED_VIDEOS_DEST'], filename)
     try:
@@ -198,7 +200,9 @@ def process_video(filename, save_video):
                     "--output_dir", output_path,
                     "-f", "coordinates.txt",
                     "-c", model_path,
-                    "--save-frames"
+                    "--save-frames",
+                    # "--color_calib_enable",
+                    # "--color_source_path", cc_source_path
                 ],
                 #  stdout=subprocess.PIPE,
                 #  stderr=subprocess.PIPE
@@ -213,7 +217,9 @@ def process_video(filename, save_video):
                     "--source_video_path", video_path,
                     "--output_dir", output_path,
                     "-f", "coordinates.txt",
-                    "-c", model_path
+                    "-c", model_path,
+                    # "--color_calib_enable",
+                    # "--color_source_path", cc_source_path
                 ],
                 #  stdout=subprocess.PIPE,
                 #  stderr=subprocess.PIPE
@@ -401,4 +407,4 @@ def get_crossings_data(filename):
         return jsonify({'message': 'No runs found for the video'}),  404
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=False)
