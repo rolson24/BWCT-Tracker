@@ -42,7 +42,7 @@ def upload():
     if request.method == 'POST':
         video = request.files.get('video')
         if video:
-            filename = secure_filename(video.filename)
+            filename = video.filename
             video_path = os.path.join(app.config['UPLOADED_VIDEOS_DEST'], filename)
             video.save(video_path)
             # os.system(f"ffmpeg -i {video_path} -c:v libx264 -preset veryfast -crf 23 {app.config['UPLOADED_VIDEOS_DEST']}/{filename.split('.')[0]}.mp4")
@@ -52,7 +52,22 @@ def upload():
         return jsonify({'message': 'No video provided'}), 400
     else:
         return render_template('upload.html')  # replace 'index.html' with your actual template
+
+@app.route('/upload_day_night', methods=['GET', 'POST'])
+def upload_day_night():
+    global video_path
+    if request.method == 'POST':
+        day_night_file = request.files.get('day_night_file')
+        if day_night_file:
+            filename = secure_filename(day_night_file.filename)
+            day_night_file_path = "static/day_night.csv"
+            day_night_file.save(day_night_file_path)
+            return jsonify({'message': 'File uploaded', 'filename': filename})
+        return jsonify({'message': 'No file provided'}), 400
+    else:
+        return render_template('upload.html')  # replace 'index.html' with your actual template
     
+
 @app.route('/stream_video')
 def stream_video():
     filename = request.args.get('filename')  # Get filename from query parameter
@@ -191,6 +206,7 @@ def process_video(filename, save_video):
     output_path = "static/outputs/"
     model_path = "../Impr-Assoc-counter_demo/models/yolov8s-2024-02-16-best_fp16_trt.engine"
     cc_source_path = "../Impr-Assoc-counter_demo/reference-image-test.jpg"
+    day_night_path = "static/day_night.csv"
     # model_path = "../Impr-Assoc-counter_demo/models/yolov8s-2024-02-14-best_fp16_trt.engine"
 
     video_path = os.path.join(app.config['UPLOADED_VIDEOS_DEST'], filename)
@@ -208,7 +224,8 @@ def process_video(filename, save_video):
                     "-c", model_path,
                     "--save-frames",
                     # "--color_calib_enable",
-                    "--color_source_path", cc_source_path
+                    "--color_source_path", cc_source_path,
+                    "--day_night_switch_file", day_night_path
                 ],
                 #  stdout=subprocess.PIPE,
                 #  stderr=subprocess.PIPE
@@ -225,7 +242,8 @@ def process_video(filename, save_video):
                     "-f", "coordinates.txt",
                     "-c", model_path,
                     # "--color_calib_enable",
-                    "--color_source_path", cc_source_path
+                    "--color_source_path", cc_source_path,
+                    "--day_night_switch_file", day_night_path
                 ],
                 #  stdout=subprocess.PIPE,
                 #  stderr=subprocess.PIPE
@@ -601,7 +619,7 @@ def get_track_data_plot(filename):
             )
 
             # Update layout if needed
-            fig.update_layout(height=resolution[1], width=resolution[0], title_text="Path Analysis")
+            fig.update_layout(height=resolution[1], width=resolution[0], title_text="Path Analysis", title_x=0.5)
 
             fig_json = fig.to_json()
             return jsonify(fig_json=fig_json)

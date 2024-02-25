@@ -7,6 +7,8 @@ from supervision.detection.line_counter import LineZone
 from supervision.geometry.core import Point, Position, Vector
 from supervision.detection.core import Detections
 
+from typing import Dict, Iterable, Optional, Tuple
+
 import numpy as np
 
 import pandas as pd
@@ -68,8 +70,10 @@ def count_lines_supervision(line_ends, bboxes, LINE_CROSSINGS_FILE):
   line_zones = []
   with open(LINE_CROSSINGS_FILE, 'w') as f:
     # f.write(f"\n")
+    # Change to use BOTTOM_CENTER as the trigger for a count (more intuitive)
+    triggering_anchors = [sv.Position.BOTTOM_CENTER]
     for i, end_points in enumerate(line_ends):
-        line_zones.append(LineZone(start=end_points[0], end=end_points[1]))
+        line_zones.append(LineZone(start=end_points[0], end=end_points[1], triggering_anchors=triggering_anchors))
         # write the line coordinates to the file with a comma after each one.
         # format: line_0: ((x1, y1>, <x2, y2>), line_1: (<x1, y1>, <x2, y2>), line_2: (<x1, y1>, <x2, y2>), line_3: (<x1, y1>, <x2, y2>) ...
         f.write(f"line_{i}: ({end_points[0].as_xy_int_tuple()}, {end_points[1].as_xy_int_tuple()}),")

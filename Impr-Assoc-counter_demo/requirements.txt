@@ -29,3 +29,4 @@ roboflow
 torchreid
 ultralytics
 plotly
+pandas

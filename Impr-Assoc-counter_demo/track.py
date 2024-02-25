@@ -21,7 +21,7 @@ from loguru import logger
 
 import supervision as sv
 from supervision import VideoSink, VideoInfo, get_video_frames_generator
-from typing import Callable, Generator, Optional, Tuple
+from typing import Callable, Generator, Optional, Tuple, Iterable
 
 
 # from yolox.data.data_augment import preproc
@@ -43,6 +43,7 @@ import color_transfer_cpu as ct_cpu
 # import color_transfer_gpu as ct_gpu
 
 import csv
+import pandas as pd
 
 IMAGE_EXT = [".jpg", ".jpeg", ".webp", ".bmp", ".png"]
 
@@ -99,7 +100,7 @@ def make_parser():
   parser.add_argument("--color_source_path", help="path to color source image for color correction. 'path/to/image.ext' ext must be: ('jpg')")
   parser.add_argument('--color_calib_device', type=str, default="cpu", help='which device to use for color calibration. GPU requires OpeCV with CUDA')
 
-  parser.add_argument('--day_night_switch_file', type=float, default=None, help='The path to the file that defines which camera is being used. example in "example_day_night.txt"')
+  parser.add_argument('--day_night_switch_file', type=str, default=None, help='The path to the file that defines which camera is being used. example in "example_day_night.txt"')
 
   return parser
 
@@ -140,9 +141,20 @@ def parse_count_lines_file(count_lines_file):
 
 def parse_day_night_file(day_night_file):
   '''File format:
-  
+  frame_id,night_true
+  0,True
+  15,False
+  ...
+
+  Returns dict: {frame_id: night_true}
   '''
   # TODO: define file format and parse file
+  if os.path.exists(day_night_file):
+    df = pd.read_csv(day_night_file)
+    print(df)
+    day_night_dict = df.set_index('frame_id').T.to_dict('list')
+    print(day_night_dict)
+    return day_night_dict
   return {}
 
 def process_video(
@@ -298,10 +310,13 @@ if __name__ == "__main__":
   count_lines = parse_count_lines_file(COUNT_LINES_FILE)
   line_zones = []
   with open(LINE_CROSSINGS_FILE, 'w') as f:
+    # Change to use BOTTOM_CENTER as the trigger for a count (more intuitive)
+    triggering_anchors = [sv.Position.BOTTOM_CENTER]
 
     for i, line in enumerate(count_lines):
       logger.info(f"line {line}")
-      line_zones.append(sv.LineZone(start=sv.Point(line[0][0], line[0][1]), end=sv.Point(line[1][0], line[1][1])))
+      # add all of the line zone counters to a list
+      line_zones.append(sv.LineZone(start=sv.Point(line[0][0], line[0][1]), end=sv.Point(line[1][0], line[1][1]), triggering_anchors=triggering_anchors))
       f.write(f"line_{i}: ({line[0]}, {line[1]}),")
     f.write("\n")
   print(f"line_zones {line_zones}")
@@ -470,9 +485,11 @@ if __name__ == "__main__":
   def callback(frame: np.ndarray, frame_id: int, color_calib_device='cpu') -> np.ndarray:
     global source_img_stats, out, fps_monitor, line_counts, args, total_fps, total_frames, color_calib_enable, camera_switches_dict
     if frame_id in camera_switches_dict.keys():
-      if camera_switches_dict[frame_id] == 'night':
+      if camera_switches_dict[frame_id] == [True]:
+        print(f"Switch to CC on! Frame: {frame_id}")
         color_calib_enable = True
-      elif camera_switches_dict[frame_id] == 'day':
+      elif camera_switches_dict[frame_id] == [False]:
+        print(f"Switch to CC off! Frame: {frame_id}")
         color_calib_enable = False
     if color_calib_enable:
       ''' Color Calibration '''
