@@ -107,6 +107,8 @@
         </div>
         <div id="crossings-plot"></div>
 
+        <div id="track-plot"></div>
+
     </div>
 
     <style>
@@ -412,19 +414,7 @@
 
                             out_label.style.left = ((lineStart.x - x) / 2 - dirLabelWidth + x) + 'px' // Position to the left of the line
                             out_label.style.top = ((lineStart.y - y) / 2 + y) + 'px'  // Position below the line
-                        } else if (angle > Math.PI && angle < 3 * Math.PI / 2) {
-                            // Line is drawn from top left to bottom right
-                            console.log('Line is drawn from top left to bottom right');
-                            label.style.left = (x - labelWidth) + 'px'; // Position to the left of the endpoint
-                            label.style.top = y + 'px';
-
-                            in_label.style.left = ((x - lineStart.x) / 2 - dirLabelWidth + lineStart.x) + 'px' // Position to the left of the line
-                            in_label.style.top = ((y - lineStart.y) / 2 + lineStart.y) + 'px' // Position below the line
-                            console.log(`Out label ${out_label.style.left}, ${out_label.style.top}`)
-
-                            out_label.style.left = ((x - lineStart.x) / 2 + 10 + lineStart.x) + 'px' // Position to the right of the line
-                            out_label.style.top = ((y - lineStart.y) / 2 - labelHeight + lineStart.y) + 'px'  // Position above the line
-                        } else {
+                        } else if (angle > -Math.PI && angle < -Math.PI / 2) {
                             // Line is drawn from top right to bottom left
                             console.log('Line is drawn from top right to bottom left');
                             label.style.left = (x + 10) + 'px'; // Position to the right of the endpoint
@@ -436,6 +426,21 @@
 
                             out_label.style.left = ((lineStart.x - x) / 2 + 10 + x) + 'px'           // Position to the right of the line
                             out_label.style.top = ((y - lineStart.y) / 2 + lineStart.y) + 'px'   // Position below the line
+
+                            
+                        } else {
+                            // Line is drawn from top left to bottom right
+                            console.log('Line is drawn from top left to bottom right');
+                            label.style.left = (x - labelWidth) + 'px'; // Position to the left of the endpoint
+                            label.style.top = y + 'px';
+
+                            in_label.style.left = ((x - lineStart.x) / 2 - dirLabelWidth + lineStart.x) + 'px' // Position to the left of the line
+                            in_label.style.top = ((y - lineStart.y) / 2 + lineStart.y) + 'px' // Position below the line
+                            console.log(`Out label ${out_label.style.left}, ${out_label.style.top}`)
+
+                            out_label.style.left = ((x - lineStart.x) / 2 + 10 + lineStart.x) + 'px' // Position to the right of the line
+                            out_label.style.top = ((y - lineStart.y) / 2 - labelHeight + lineStart.y) + 'px'  // Position above the line
+
                         }
                         document.querySelector('.video-container').appendChild(label);
                         document.querySelector('.video-container').appendChild(out_label);
@@ -455,6 +460,11 @@
 
             $('#process-button').on('click', function () {
                 if (processing == false) {
+                    var confirmProcess = confirm("Are you sure you want to process the full video? This could take several hours. Remember if you just want to process again with new lines, you can use the 'Reprocess Counts' button");
+                    if (!confirmProcess) {
+                        return; // User clicked 'No', exit the function
+                    }
+
                     $('#process-button').prop('disabled', true)
                     processing = true
                     $('#processing-progress').css('width', 0 + '%').attr('aria-valuenow', 0);
@@ -723,6 +733,22 @@
                         // Render the Plotly plot
                         Plotly.newPlot('crossings-plot', plotData, layout);
                     });
+
+                fetch('/get_tracks/' + msg.filename, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        // Parse the JSON string into a JavaScript object
+                        var fig = JSON.parse(data.fig_json);
+
+                        // Use Plotly to render the graph
+                        Plotly.newPlot('track-plot', fig.data, fig.layout);
+                    })
+                    .catch(error => console.error('Error fetching the Plotly graph:', error));
 
             });
 

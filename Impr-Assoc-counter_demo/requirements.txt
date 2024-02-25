@@ -28,3 +28,4 @@ onnxruntime
 roboflow
 torchreid
 ultralytics
+plotly

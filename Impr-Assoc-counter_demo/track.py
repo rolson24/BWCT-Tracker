@@ -11,9 +11,9 @@ import tensorflow as tf
 import json
 
 
-# from YOLOv8_TensorRT import TRTModule  # isort:skip
-# from YOLOv8_TensorRT.torch_utils import det_postprocess
-# from YOLOv8_TensorRT.utils import letterbox, blob, path_to_list
+from YOLOv8_TensorRT import TRTModule  # isort:skip
+from YOLOv8_TensorRT.torch_utils import det_postprocess
+from YOLOv8_TensorRT.utils import letterbox, blob, path_to_list
 
 sys.path.append('.')
 
@@ -99,6 +99,8 @@ def make_parser():
   parser.add_argument("--color_source_path", help="path to color source image for color correction. 'path/to/image.ext' ext must be: ('jpg')")
   parser.add_argument('--color_calib_device', type=str, default="cpu", help='which device to use for color calibration. GPU requires OpeCV with CUDA')
 
+  parser.add_argument('--day_night_switch_file', type=float, default=None, help='The path to the file that defines which camera is being used. example in "example_day_night.txt"')
+
   return parser
 
 def create_run_folder(output_dir_name):
@@ -135,6 +137,13 @@ def parse_count_lines_file(count_lines_file):
   logger.info(f"lines pre replace: {lines}")
   lines = [[eval(coord.replace('(', '').replace(')', '')) for coord in line] for line in lines]
   return lines
+
+def parse_day_night_file(day_night_file):
+  '''File format:
+  
+  '''
+  # TODO: define file format and parse file
+  return {}
 
 def process_video(
     source_path: str,
@@ -210,7 +219,14 @@ if __name__ == "__main__":
 
   # get the color_source_path
   COLOR_SOURCE_PATH = args.color_source_path
+
+  # get the day_night_path
+  DAY_NIGHT_PATH = args.day_night_switch_file
+
+  # get the count lines file
   COUNT_LINES_FILE = args.count_lines_file
+
+  # Which object tracker to use
   OBJECT_TRACKER = args.object_tracker
 
   # save the line crossings file
@@ -233,21 +249,21 @@ if __name__ == "__main__":
       # dict maping class_id to class_name
       CLASS_NAMES_DICT = yolo_model.model.names
 
-    # elif MODEL_EXTENSION == "engine":
-    #   #engine = "yolov8s.engine"
-    #   global Engine
-    #   global device
-    #   global H, W
-    #   # Load a model from an .engine file
-    #   device = torch.device(args.device)
-    #   Engine = TRTModule(MODEL, device)
-    #   H, W = Engine.inp_info[0].shape[-2:]
-    #   print(H, W)
-    #   Engine.set_desired(['num_dets', 'bboxes', 'scores', 'labels'])
+    elif MODEL_EXTENSION == "engine":
+      #engine = "yolov8s.engine"
+      global Engine
+      global device
+      global H, W
+      # Load a model from an .engine file
+      device = torch.device(args.device)
+      Engine = TRTModule(MODEL, device)
+      H, W = Engine.inp_info[0].shape[-2:]
+      print(H, W)
+      Engine.set_desired(['num_dets', 'bboxes', 'scores', 'labels'])
 
-    #   # yolo_model = YOLO(MODEL, task="detect")
-    #   CLASS_NAMES_DICT = {1:"Pedestrians", 0:"Bikes", 2:"Scooters", 3:"Wheelchairs"} # for yolov8n-2023-11-03 change for yolov8s-2024-02-14
-    #   #yolo_model = torch.hub.load(MODEL, 'custom',
+      # yolo_model = YOLO(MODEL, task="detect")
+      CLASS_NAMES_DICT = {1:"Pedestrians", 0:"Bikes", 2:"Scooters", 3:"Wheelchairs"} # for yolov8n-2023-11-03 change for yolov8s-2024-02-14
+      #yolo_model = torch.hub.load(MODEL, 'custom',
     else:
       yolo_model = YOLO(MODEL)
       # yolo_model.fuse()
@@ -278,6 +294,7 @@ if __name__ == "__main__":
 
   video_info = sv.VideoInfo.from_video_path(SOURCE_VIDEO_PATH)
 
+  # parse the count lines file
   count_lines = parse_count_lines_file(COUNT_LINES_FILE)
   line_zones = []
   with open(LINE_CROSSINGS_FILE, 'w') as f:
@@ -288,6 +305,17 @@ if __name__ == "__main__":
       f.write(f"line_{i}: ({line[0]}, {line[1]}),")
     f.write("\n")
   print(f"line_zones {line_zones}")
+
+  # parse the day night file
+  camera_switches_dict = {}
+  if DAY_NIGHT_PATH != None or DAY_NIGHT_PATH != "":
+    # dict of frame id's to which camera we are switching to.
+    camera_switches_dict = parse_day_night_file(DAY_NIGHT_PATH)
+    color_calib_enable = True
+  elif args.color_calib_enable:
+    color_calib_enable = True
+  else:
+    color_calib_enable = False
 
   # impr_assoc_tracker = ImprAssocTrack(track_high_thresh=args.track_high_thresh,
   #                                       track_low_thresh=args.track_low_thresh,
@@ -400,7 +428,7 @@ if __name__ == "__main__":
   # create instance of FPSMonitor
   fps_monitor = sv.FPSMonitor()
 
-  if args.color_calib_enable:
+  if color_calib_enable:
     if SOURCE_VIDEO_EXT == 'avi':
       out = cv2.VideoWriter(TARGET_VIDEO_PATH_CLEAN, cv2.VideoWriter_fourcc(*'MJPG'), video_info.fps, (video_info.width, video_info.height))
     else:
@@ -440,8 +468,13 @@ if __name__ == "__main__":
   total_fps = 0
 
   def callback(frame: np.ndarray, frame_id: int, color_calib_device='cpu') -> np.ndarray:
-    global source_img_stats, out, fps_monitor, line_counts, args, total_fps, total_frames
-    if args.color_calib_enable:
+    global source_img_stats, out, fps_monitor, line_counts, args, total_fps, total_frames, color_calib_enable, camera_switches_dict
+    if frame_id in camera_switches_dict.keys():
+      if camera_switches_dict[frame_id] == 'night':
+        color_calib_enable = True
+      elif camera_switches_dict[frame_id] == 'day':
+        color_calib_enable = False
+    if color_calib_enable:
       ''' Color Calibration '''
       if args.color_calib_device == 'cpu':
         frame_cpu = ct_cpu.color_transfer_cpu(source_img_stats, frame, clip=False, preserve_paper=False)
@@ -536,13 +569,13 @@ if __name__ == "__main__":
     total_fps += fps_monitor()
     total_frames = frame_id + 1
     ''' Log Time'''
-    if frame_id % 1000 == 0:
-      logger.info('Processing frame {}/{} ({:.2f} fps)'.format(frame_id, video_info.total_frames, max(1e-5, total_fps/total_frames)))
+    if frame_id % 20 == 0:
+      # logger.info('Processing frame {}/{} ({:.2f} fps)'.format(frame_id, video_info.total_frames, max(1e-5, total_fps/total_frames)))
       progress = frame_id / video_info.total_frames * 100  # Calculate progress as a percentage
-      # with open('progress.txt', 'w') as f:
-      #   f.write(str(progress))
-      # with open('track_logs.txt', '+a') as f:
-      #   f.write('Processing frame {}/{} ({:.2f} fps)'.format(frame_id, video_info.total_frames, max(1e-5, fps_monitor())))
+      with open('progress.txt', 'w') as f:
+        f.write(str(progress))
+      with open('track_logs.txt', '+a') as f:
+        f.write('Processing frame {}/{} ({:.2f} fps)'.format(frame_id, video_info.total_frames, max(1e-5, fps_monitor())))
       # logger.info(f"Write Progress: {progress}")
 
     # ''' Log Time'''
