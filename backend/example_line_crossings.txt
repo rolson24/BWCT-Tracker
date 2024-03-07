@@ -1,0 +1,7 @@
+line_0: ((189, 196), (448, 286)), line_1: ((200, 430), (102, 35)), line_2: ((500, 246), (320, 340)), ...
+<frame_num>,<line_num>,<class_name>,<direction(in|out)>
+<frame_num_2>,<line_num>,<class_name>,<direction(in|out)>
+<frame_num_3>,<line_num>,<class_name>,<direction(in|out)>
+.
+.
+.

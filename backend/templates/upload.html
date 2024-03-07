@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <!-- <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css"> -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+
+    <!-- <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script> -->
+
+    <script src="{{ url_for('static', filename='js/jquery-3.5.1.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/plotly-latest.min.js') }}"></script>
+
+    <title>BWCT Video Analysis Tool</title>
+</head>
+
+<body>
+    
+    <div class="container">
+        <h1 class="text-center my-5">BWCT Video Analysis Tool</h1>
+        <h2>Upload Video</h2>
+
+        <!-- <form id="upload-form" action="/" method="post" enctype="multipart/form-data" class="mt-3">
+            <div class="custom-file">
+                <input type="file" name="video" id="video" class="custom-file-input">
+                <label class="custom-file-label" for="video">Select video</label>
+            </div>
+            <button type="submit" class="btn btn-primary mt-3">Upload Video</button>
+        </form> -->
+        <button id="video-upload-button" class="btn btn-secondary mt-3">Upload Video</button>
+
+        <div class="progress mt-3">
+            <div id="upload-progress" class="progress-bar" role="progressbar" style="width: 0%" aria-valuenow="0"
+                aria-valuemin="0" aria-valuemax="100"></div>
+        </div>
+
+        <div id="processing-indicator" style="display: none;">
+            <p>Uploading video, please wait. This may take several minutes...</p>
+            <!-- <div class="d-flex flex-row justify-content-center">
+                <div id="loader" class="save_spinner" style="display:none;"></div>
+            </div> -->
+        </div>
+
+
+        <div class="video-container">
+            <video id="video-player" controls style="width: 100%; height: 100%;"></video>
+            <canvas id="canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: auto;"></canvas>
+            <div id="loader" class="save_spinner" style="position:absolute ; top: 0; left: 0;display:none;"></div>
+
+        </div>
+
+        <form id="upload-day-night-form" method="post" enctype="multipart/form-data" class="mt-3">
+            <input type="file" id="csvFile" name="day_night_file" accept=".csv" />
+            <button type="submit" class="btn btn-primary mt-3">Upload Day Night csv</button>
+        </form>
+
+        <div class="form-group">
+            <label for="save-video">Save Annotated Video</label>
+            <select class="form-control" id="save-video">
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+            </select>
+        </div>
+
+        <div class="button-container">
+            <button id="draw-button" class="btn btn-secondary mt-3" style="display: none;">Draw Lines</button>
+            <button id="process-button" class="btn btn-secondary mt-3" style="display: none;">Process Video</button>
+            <button id="reprocess-button" class="btn btn-secondary mt-3" style="display: none">Reprocess Counts</button>
+            <button id="clear-lines-button" class="btn btn-secondary mt-3" style="display: none">Clear Lines</button>
+
+            <button id="download-lines-button" class="btn btn-secondary mt-3" style="display: none">Download Line
+                Crossings</button>
+            <a id="download-lines-link" href="/download_lines" download style="display: none">Download Line
+                Crossings</a>
+
+            <button id="download-counts-button" class="btn btn-secondary mt-3" style="display: none">Download Counts
+                Output</button>
+            <a id="download-counts-link" href="" download style="display: none">Download Counts Output</a>
+
+            <button id="download-processed-video-button" class="btn btn-secondary mt-3" style="display: none">Download
+                Processed Video</button>
+            <a id="download-processed-video-link" href="" download style="display: none">Download Processed Video</a>
+
+        </div>
+
+        <h5 id="estimated-time">Estimated time remaining:</h5>
+        <div id="processing-loader" class="process_spinner" style="display:none;"></div>
+
+        <div class="progress mt-3">
+            <div id="processing-progress" class="progress-bar" role="progressbar" style="width:  0%" aria-valuenow="0"
+                aria-valuemin="0" aria-valuemax="100"></div>
+        </div>
+
+
+        <div id="counts-graph"></div>
+        <!-- Add this to your upload.html where you want to display the counts -->
+        <div id="counts-display" style="margin-top:   20px;">
+            <table id="counts-table" class="table">
+                <thead>
+                    <tr>
+                        <th>Line</th>
+                        <th>Class</th>
+                        <th>Direction</th>
+                        <th>Count</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Counts data will be inserted here -->
+                </tbody>
+            </table>
+        </div>
+        <div id="crossings-plot"></div>
+
+        <div id="track-plot"></div>
+
+    </div>
+
+    <style>
+        .video-container {
+            position: relative;
+            display: inline-block;
+            width: 640px;
+            /* Set to the width of your video */
+            height: 480px;
+            /* Set to the height of your video */
+        }
+
+        #video-player,
+        #canvas {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        #button-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        #counts-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        #counts-table th,
+        #counts-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        #counts-table th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+
+        #canvas+span {
+            position: absolute;
+            pointer-events: none;
+            /* Prevent the label from being interacted with */
+            color: red;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .class-0 {
+            background-color: #f2f2f2;
+        }
+
+        .class-1 {
+            background-color: #e6ffe6;
+        }
+
+        .class-2 {
+            background-color: #e6e6ff;
+        }
+
+        .class-3 {
+            background-color: #ffffcc;
+        }
+
+        .save_spinner {
+            border: 16px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 16px solid #3498db;
+            width: 300px;
+            height: 300px;
+            -webkit-animation: spin 2s linear infinite;
+            /* Safari */
+            animation: spin 2s linear infinite;
+        }
+
+        .process_spinner {
+            border: 10px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 10px solid #3498db;
+            width: 30px;
+            height: 30px;
+            -webkit-animation: spin 2s linear infinite;
+            /* Safari */
+            animation: spin 2s linear infinite;
+        }
+
+        /* Safari */
+        @-webkit-keyframes spin {
+            0% {
+                -webkit-transform: rotate(0deg);
+            }
+
+            100% {
+                -webkit-transform: rotate(360deg);
+            }
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+
+    <script>
+        window.addEventListener('beforeunload', function (e) {
+            // Cancel the event
+            e.preventDefault();
+            // Chrome requires returnValue to be set
+            e.returnValue = 'Are you sure you want to leave? You will lose your progress.';
+        });
+        $(document).ready(function () {
+            var drawing = false;
+            var lineStart = null;
+            var processing = false;
+
+            $('#video-player, #canvas').hide();
+
+            $('.custom-file-input').on("change", function () {
+                var fileName = $(this).val().split("\\").pop();
+                $(this).siblings('.custom-file-label').addClass("selected").html(fileName);
+            });
+
+            $('#video-upload-button').on('click', function(e) {
+                // Prevent the default form submission if the button is part of a form
+                e.preventDefault();
+
+                // Call the openFileDialog function exposed by the preload script
+                window.electronAPI.openFileDialog().then(result => {
+                    // Assuming openFileDialog is adjusted to return a Promise that resolves with the file selection result
+                    console.log("get filenames")
+                    console.log(result)
+                    // You can now do something with the selected file paths, like sending them to your Flask backend
+                    $.ajax({
+                        url: '/receive-file-paths',
+                        type: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify({ filenames: result }),
+                        success: function(response) {
+                            console.log('Server response:', response);
+                            $('#draw-button').show();
+                            $('#process-button').show();  // Show the "Process Video" button
+                            $('#reprocess-button').show();  // Show the "Reprocess Counts" button
+                            $('#clear-lines-button').show();  // Show the "Clear Lines" button
+                            // var video_name = response.filename.split('.')[0];
+                            // var video_filename = response.filename;
+
+                            $('#video-player').attr('src', `/stream_video`, 'type', 'video/mp4').css({ width: '100%', height: '100%' }).prop('controls', true).on('loadedmetadata', function () {
+                                var canvas = $('#canvas')[0];
+                                var ctx = canvas.getContext('2d');
+                                var aspectRatio = this.videoHeight / this.videoWidth;
+                                var canvasHeight = this.clientWidth * aspectRatio;
+                                console.log(`Canvas height: ${canvasHeight}`)
+                                var yOffset = (this.clientHeight - canvasHeight) / 2
+                                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                                $('#canvas').css("top", yOffset).attr({ width: this.clientWidth, height: canvasHeight }).css('pointer-events', 'none').show();
+                            }).show();
+
+                            $('#download-counts-link').attr('href', '/download_counts');
+                            $('#download-processed-video-link').attr('href', '/download_processed_video');
+                        },
+                        error: function(xhr, status, error) {
+                            console.error('Error sending filenames:', error);
+                        }
+                    })
+                }).catch(err => {
+                    console.error('Error opening file dialog:', err);
+                });
+            });
+
+
+
+            $('#upload-day-night-form').on('submit', function(e) {
+                e.preventDefault(); // Prevent default form submission behavior
+
+                var formData = new FormData(this); // Create a FormData object from the form
+                $.ajax({
+                    url: '/upload_day_night', // Your Flask route
+                    type: 'POST',
+                    data: formData,
+                    contentType: false, // Necessary for file upload
+                    processData: false, // Necessary for file upload
+                    success: function(response) {
+                        alert(response.message); // Show success message
+                    },
+                    error: function(xhr) {
+                        alert('An error occurred'); // Show error message
+                    }
+                });
+            });
+
+            $('#draw-button').on('click', function () {
+                console.log('Draw button clicked');
+                drawing = !drawing;
+                $('#video-player').prop('controls', !drawing);
+                $('#canvas').css('pointer-events', drawing ? 'auto' : 'none');
+                $(this).text(drawing ? 'Stop Drawing' : 'Draw Lines');
+            });
+
+            $('#clear-lines-button').on('click', function () {
+                var ctx = $('#canvas')[0].getContext('2d');
+                ctx.clearRect(0, 0, $('#canvas')[0].width, $('#canvas')[0].height);
+                $.post('/clear_lines', function (response) {
+                    // alert(response.message);
+                });
+                for (var label in labels) {
+                    label_obj = labels[label];
+                    if (Array.isArray(label_obj)) {
+                        for (var dir_label in label_obj) {
+                            console.log(`dir_label: ${label_obj[dir_label]} type: ${typeof label_obj[dir_label]}`)
+                            label_obj[dir_label].remove()
+                        }
+                    } else {
+                        label_obj.remove()
+                    }
+                }
+                labels = {};
+                labels['Out'] = [];
+                labels['In'] = [];
+            });
+
+            var labels = {};  // Create an object to store the labels
+            labels['Out'] = [];
+            labels['In'] = [];
+            $('#canvas').on('click', function (e) {
+                if (drawing) {
+                    var rect = this.getBoundingClientRect();
+                    var x = e.clientX - rect.left;
+                    var y = e.clientY - rect.top;
+                    if (lineStart) {
+                        var ctx = this.getContext('2d');
+                        ctx.beginPath();
+                        ctx.moveTo(lineStart.x, lineStart.y);
+                        ctx.lineTo(x, y);
+                        ctx.strokeStyle = 'red';
+                        ctx.lineWidth = 5;
+                        ctx.stroke();
+                        var video = document.getElementById('video-player');
+                        var canvas = document.getElementById('canvas');
+                        var scaleX = video.videoWidth / canvas.width;
+                        var scaleY = video.videoHeight / canvas.height;
+                        // var scaleX = 1;
+                        // var scaleY = 1;
+                        console.log(`scaleX: ${scaleX}, scaleY: ${scaleY}`)
+                        console.log(`Line drawn: (${Math.round(lineStart.x * scaleX)},${Math.round(lineStart.y * scaleY)}) (${Math.round(x * scaleX)},${Math.round(y * scaleY)})`)
+                        $.post('/coordinates', { line: `(${Math.round(lineStart.x * scaleX)},${Math.round(lineStart.y * scaleY)}) (${Math.round(x * scaleX)},${Math.round(y * scaleY)})` }, function (response) {
+                            // alert(response.message);
+                        });
+                        // Create a label element for the line
+                        var label = document.createElement('span');
+                        label.textContent = 'Line ' + ((Object.keys(labels).length - 2));  // Use the number of lines as the label
+                        label.style.position = 'absolute';
+                        label.style.color = 'red';
+                        label.style.fontSize = '15px';
+                        label.style.fontWeight = 'bold';
+                        label.style.pointerEvents = 'none';  // Prevent the label from being interacted with
+
+                        var out_label = document.createElement('span');
+                        out_label.textContent = 'Out';  // Use the number of lines as the label
+                        out_label.style.position = 'absolute';
+                        out_label.style.color = 'red';
+                        out_label.style.fontSize = '15px';
+                        out_label.style.fontWeight = 'bold';
+                        out_label.style.pointerEvents = 'none';  // Prevent the label from being interacted with
+
+                        var in_label = document.createElement('span');
+                        in_label.textContent = 'In';  // Use the number of lines as the label
+                        in_label.style.position = 'absolute';
+                        in_label.style.color = 'red';
+                        in_label.style.fontSize = '15px';
+                        in_label.style.fontWeight = 'bold';
+                        in_label.style.pointerEvents = 'none';  // Prevent the label from being interacted with
+
+                        var labelWidth = 50;
+                        var dirLabelWidth = 30;
+                        var labelHeight = 20;
+
+                        var canvas_y_offset = Number((canvas.style.top).split('p')[0]);
+                        console.log(`${canvas.style.top.split('p')[0]}`);
+
+                        lineStart.y += canvas_y_offset;
+                        y += canvas_y_offset;
+
+                        // Calculate the angle of the line
+                        var angle = Math.atan2(lineStart.y - y, x - lineStart.x);
+                        // Determine the direction of the line and position the label accordingly
+                        console.log('Angle:', angle);
+                        if (angle > 0 && angle < Math.PI / 2) {
+                            // Line is drawn from bottom left to upper right
+                            console.log('Line is drawn from bottom left to upper right');
+                            label.style.left = (x - labelWidth) + 'px'; // Position to the left of the endpoint
+                            label.style.top = (y - labelHeight) + 'px'; // Position above the endpoint
+
+                            in_label.style.left = ((x - lineStart.x) / 2 + 10 + lineStart.x) + 'px'          // Position to the right of the line
+                            in_label.style.top = ((lineStart.y - y) / 2 + y) + 'px'  // Position below the line
+                            console.log(`Out label ${out_label.style.left}, ${out_label.style.top}`)
+
+                            out_label.style.left = ((x - lineStart.x) / 2 - dirLabelWidth + lineStart.x) + 'px'    // Position to the left of the line
+                            out_label.style.top = ((lineStart.y - y) / 2 - labelHeight + y) + 'px'   // Position above the line
+                        } else if (angle > Math.PI / 2 && angle < Math.PI) {
+                            // Line is drawn from bottom right to top left
+                            console.log('Line is drawn from bottom right to top left');
+                            label.style.left = (x + 10) + 'px'; // Position to the right of the endpoint
+                            label.style.top = (y - labelHeight) + 'px'; // Position below the endpoint
+
+                            in_label.style.left = ((lineStart.x - x) / 2 + 10 + x) + 'px' // Position to the right of the line
+                            in_label.style.top = ((lineStart.y - y) / 2 - labelHeight + y) + 'px' // Position above the line
+                            console.log(`Out label ${out_label.style.left}, ${out_label.style.top}`)
+
+                            out_label.style.left = ((lineStart.x - x) / 2 - dirLabelWidth + x) + 'px' // Position to the left of the line
+                            out_label.style.top = ((lineStart.y - y) / 2 + y) + 'px'  // Position below the line
+                        } else if (angle > -Math.PI && angle < -Math.PI / 2) {
+                            // Line is drawn from top right to bottom left
+                            console.log('Line is drawn from top right to bottom left');
+                            label.style.left = (x + 10) + 'px'; // Position to the right of the endpoint
+                            label.style.top = y + 'px';
+
+                            in_label.style.left = ((lineStart.x - x) / 2 - dirLabelWidth + x) + 'px' // Position to the left of the line
+                            in_label.style.top = ((y - lineStart.y) / 2 - labelHeight + lineStart.y) + 'px' // Position above the line
+                            console.log(`Out label ${out_label.style.left}, ${out_label.style.top}`)
+
+                            out_label.style.left = ((lineStart.x - x) / 2 + 10 + x) + 'px'           // Position to the right of the line
+                            out_label.style.top = ((y - lineStart.y) / 2 + lineStart.y) + 'px'   // Position below the line
+
+                            
+                        } else {
+                            // Line is drawn from top left to bottom right
+                            console.log('Line is drawn from top left to bottom right');
+                            label.style.left = (x - labelWidth) + 'px'; // Position to the left of the endpoint
+                            label.style.top = y + 'px';
+
+                            in_label.style.left = ((x - lineStart.x) / 2 - dirLabelWidth + lineStart.x) + 'px' // Position to the left of the line
+                            in_label.style.top = ((y - lineStart.y) / 2 + lineStart.y) + 'px' // Position below the line
+                            console.log(`Out label ${out_label.style.left}, ${out_label.style.top}`)
+
+                            out_label.style.left = ((x - lineStart.x) / 2 + 10 + lineStart.x) + 'px' // Position to the right of the line
+                            out_label.style.top = ((y - lineStart.y) / 2 - labelHeight + lineStart.y) + 'px'  // Position above the line
+
+                        }
+                        document.querySelector('.video-container').appendChild(label);
+                        document.querySelector('.video-container').appendChild(out_label);
+                        document.querySelector('.video-container').appendChild(in_label);
+                        labels[label.textContent] = label;  // Store the label in the labels object
+                        labels["Out"].push(out_label);
+                        labels["In"].push(in_label);
+                        lineStart = null;
+                    } else {
+                        lineStart = { x: x, y: y };
+                    }
+                }
+            });
+
+
+            console.log('JavaScript code run');  // Log when the JavaScript code is run
+
+            $('#process-button').on('click', function () {
+                if (processing == false) {
+                    var confirmProcess = confirm("Are you sure you want to process the full video? This could take several hours. Remember if you just want to process again with new lines, you can use the 'Reprocess Counts' button");
+                    if (!confirmProcess) {
+                        return; // User clicked 'No', exit the function
+                    }
+
+                    $('#process-button').prop('disabled', true)
+                    processing = true
+                    $('#processing-progress').css('width', 0 + '%').attr('aria-valuenow', 0);
+                    // var formData = new FormData(document.getElementById('upload-form'));
+                    // var filename = formData.get('video').name;  // Assuming 'video' is the name attribute of your file input
+                    var saveVideo = $('#save-video').val(); // Get the dropdown value
+
+                    // formData.append('save_video', saveVideo); // Append the choice to your form data
+                    // formData.append('filename', filename); // Append the filename to your form data
+                    $('#processing-loader').show()
+                    fetch('/process', {
+                        method: 'POST',
+                        body: saveVideo  // Use FormData directly
+                    })
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error('Network response was not ok');
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            console.log('Video processing started:', data);
+                        })
+                        .catch(error => {
+                            console.error('There has been a problem with your fetch operation:', error);
+                        });
+                }
+            });
+
+
+
+            $('#reprocess-button').on('click', function () {
+                // var formData = new FormData(document.getElementById('upload-form'));
+                // var filename = formData.get('video').name;  // Get the filename from the form data
+                $('#processing-progress').css('width', '0%').attr('aria-valuenow', 0);  // Reset the progress bar
+                $('#processing-loader').show()
+
+                fetch('/reprocess', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    // body: JSON.stringify({ filename: filename })  // Pass the filename as JSON
+                })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log('Video reprocessing started:', data);
+                    })
+                    .catch(error => {
+                        console.error('There has been a problem with your fetch operation:', error);
+                    });
+            });
+
+            $('#download-counts-button').on('click', function () {
+                $('#download-counts-link')[0].click();
+            });
+            $('#download-lines-button').on('click', function () {
+                $('#download-lines-link')[0].click();
+            });
+            $('#download-processed-video-button').on('click', function () {
+                $('#download-processed-video-link')[0].click();
+            });
+
+            // document.addEventListener('DOMContentLoaded', function() {
+            // fetch('/get_crossings_data')
+            // .then(response => response.json())
+            // .then(data => {
+            //     // Use Plotly to create the bar graph with the data received
+            //     var plotData = []; // Transform 'data' into the required format for Plotly
+            //     var layout = { /* ... layout configuration ... */ };
+
+            //     Plotly.newPlot('crossings-plot', plotData, layout);
+            // });
+
+
+            // });
+
+            var socket = io.connect('http://' + document.domain + ':' + location.port);
+            socket.on('progress', function (msg) {
+                console.log('Processing progress:', msg);
+                $('#processing-progress').css('width', msg.data + '%').attr('aria-valuenow', msg.data);
+                $('#estimated-time').text('Estimated time remaining: ' + msg.time)
+            });
+            var video_name;
+            // Listen for the video_processed event
+            socket.on('video_processed', function (msg) {
+                console.log('Video processed event received:', msg);  // Log the event data
+                $('#processing-progress').css('width', '100%').attr('aria-valuenow', 100);
+                $('#estimated-time').text('Estimated time remaining: 00:00:00')
+                $('#processing-loader').hide()
+                processing = false
+                $('#process-button').prop('disabled', false);
+
+
+                // Make an AJAX request to get the counts data
+                fetch('/counts')
+                    .then(response => response.json())
+                    // Inside the fetch success callback
+                    .then(data => {
+                        // Parse the counts data into an array of objects
+                        var lines = data.counts.split('\n\n');
+                        var countsData = [];
+                        var currentLine = 0;
+                        var avgFPS;
+                        video_name = data.filename
+                        lines.forEach(line => {
+                            var parts = line.split('\n');
+                            var lineName = parts[0];
+                            console.log('Line:', lineName);
+                            console.log('Parts:', parts);
+
+                            parts.forEach(part => {
+                                console.log('Part:', part);
+                                var classParts = part.split(/[\s,]+/); // Split the part by spaces or commas
+                                console.log('Class parts:', classParts);
+                                if (classParts[0] === 'line') { // If the first part is 'line', set the current line
+                                    currentLine = classParts[1];
+                                } else if (classParts[0] === 'Average' && classParts[1] === 'FPS:') {
+                                    avgFPS = classParts[2];
+                                } else {
+                                    var classData = classParts[0].split('_') // Split the class name by underscores
+                                    countsData.push({
+                                        line: 'Line ' + currentLine,
+                                        class: classData[0],
+                                        direction: classData[1],
+                                        count: classParts[1]
+                                    });
+                                }
+                            });
+                        })
+
+                        // Create the data for the Plotly graph
+                        var graphData = [];
+                        countsData.forEach(count => {
+                            // Find the trace for this class and direction, or create a new one if it doesn't exist
+                            var trace = graphData.find(trace => trace.name === 'Class ' + count.class + ' ' + count.direction);
+                            if (!trace) {
+                                trace = {
+                                    x: [],
+                                    y: [],
+                                    type: 'bar',
+                                    name: 'Class ' + count.class + ' ' + count.direction
+                                };
+                                graphData.push(trace);
+                            }
+
+                            // Add the data for this count to the trace
+                            trace.x.push(count.line);
+                            trace.y.push(count.count);
+                        });
+
+                        // Create the layout for the Plotly graph
+                        var layout = {
+                            title: 'Counts by Line',
+                            xaxis: {
+                                title: 'Line'
+                            },
+                            yaxis: {
+                                title: 'Count'
+                            },
+                            barmode: 'group'
+                        };
+
+                        // Create the Plotly graph
+                        Plotly.newPlot('counts-graph', graphData, layout, {
+                            toImageButtonOptions: {
+                                filename: video_name + '_counts_by_line',
+                                height: null,
+                                width: null,
+                                format: 'png'
+                            }
+                        });
+
+                        // Get the table body element
+                        var tableBody = document.getElementById('counts-display').querySelector('tbody');
+
+                        // Clear the table body
+                        tableBody.innerHTML = '';
+
+                        // Insert each count as a row in the table
+                        countsData.forEach(count => {
+                            var row = document.createElement('tr');
+                            var lineCell = document.createElement('td');
+                            var classCell = document.createElement('td');
+                            var directionCell = document.createElement('td');
+                            var countCell = document.createElement('td');
+
+                            lineCell.textContent = count.line;
+                            classCell.textContent = count.class;
+                            directionCell.textContent = count.direction;
+                            countCell.textContent = count.count;
+
+                            var className = 'class-' + count.class.replace(/\s+/g, '-');
+                            row.classList.add(className);
+
+                            row.appendChild(lineCell);
+                            row.appendChild(classCell);
+                            row.appendChild(directionCell);
+                            row.appendChild(countCell);
+                            tableBody.appendChild(row);
+                        });
+
+                        // Insert the average FPS into the table
+                        if (avgFPS) {
+                            var row = document.createElement('tr');
+                            var cell = document.createElement('td');
+                            cell.colSpan = 4;
+                            cell.textContent = 'Average FPS: ' + avgFPS;
+                            row.appendChild(cell);
+                            tableBody.appendChild(row);
+                        }
+                        $('#download-lines-button').show();  // Show the "Download Line Crossings" button
+                        $('#download-counts-button').show();  // Show the "Download Counts Output" button
+                        $('#download-processed-video-button').show();  // Show the "Download Processed Video" button
+                    })
+                    .catch(error => {
+                        console.error('Error fetching counts data:', error);
+                    });
+                console.log('get crossings data');
+
+                var videoFPS = 30;  // Set the video FPS to 30
+                fetch('/get_crossings_data', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    // Include the fps in the body of the request
+                    body: JSON.stringify({ fps: videoFPS })
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log('Crossings data:', data);
+                        // var video_name = msg.filename.split('.')[0]
+
+                        if (typeof data === 'string') {
+                            data = JSON.parse(data);
+                        }
+                        // Transform data into Plotly format
+                        let transformedData = data.reduce((acc, d) => {
+                            // Create a unique key for each combination
+                            const key = `${d.line_num}_${d.class_name}_${d.direction}`;
+                            if (!acc[key]) {
+                                acc[key] = {
+                                    x: [],
+                                    y: [],
+                                    name: `Line ${d.line_num} ${d.class_name} (${d.direction})`,
+                                    type: 'bar'
+                                };
+                            }
+                            acc[key].x.push(d.time); // Ensure this is a date string or a Date object
+                            acc[key].y.push(d.count); // The count value
+                            return acc;
+                        }, {});
+
+                        // Create traces from the transformed data
+                        let plotData = Object.values(transformedData);
+
+                        // Configure the layout
+                        let layout = {
+                            barmode: 'group', // or 'stack' if you want stacked bars
+                            title: 'Counts per Hour',
+                            xaxis: {
+                                title: 'Time',
+                                tickangle: -45
+                            },
+                            yaxis: {
+                                title: 'Count'
+                            },
+                            margin: { b: 150 } // Adjust the bottom margin to prevent labels from being cut off
+                        };
+
+                        // Render the Plotly plot
+                        Plotly.newPlot('crossings-plot', plotData, layout, {
+                            toImageButtonOptions: {
+                                filename: video_name + '_counts_per_hour',
+                                height: null,
+                                width: null,
+                                format: 'png'
+                            }});
+                    });
+
+                fetch('/get_tracks', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        // Parse the JSON string into a JavaScript object
+                        var fig = JSON.parse(data.fig_json);
+                        // var video_name = msg.filename.split('.')[0]
+
+                        // Use Plotly to render the graph
+                        Plotly.newPlot('track-plot', fig.data, fig.layout, {
+                            toImageButtonOptions: {
+                                filename: video_name + '_tracks_overlay',
+                                height: null,
+                                width: null,
+                                format: 'png'
+                            }
+                        });
+                    })
+                    .catch(error => console.error('Error fetching the Plotly graph:', error));
+
+            });
+
+        });
+    </script>
+
+</body>
+
+</html>

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, intial-scale=1.0">
+    <title>BWCT Video Merging Tool</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/resumable.js/1.1.0/resumable.min.js"></script>
+</head>
+
+<body>
+    <h1>BWCT Video Merging Tool</h1>
+    <h2 id="state">Upload segments to merge</h2>
+    <!-- Resumable.js file input -->
+    <input type="file" id="resumable-browse" multiple>
+    <button id="mergeButton">Merge Videos</button> 
+    <script>
+        var r = new Resumable({
+            target: '/upload',
+            fileType: ['mp4', 'avi'], // Specify allowed file types
+            chunkSize: 1*1024*1024, // 1 MB chunks
+            simultaneousUploads: 3, // Adjust based on your server's capability
+            testChunks: false, // Set to true if you want to check if the chunk exists before uploading
+            throttleProgressCallbacks: 1,
+        });
+
+        document.getElementById('mergeButton').addEventListener('click', function() {
+            fetch('/merge', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                // Include any necessary data as JSON in the body, if your merge function requires
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log(data);
+                // Handle success response, maybe notify the user or redirect
+                alert(data.message);
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+                // Handle errors here, such as displaying a notification
+            });
+        });
+        
+        r.assignBrowse(document.getElementById('resumable-browse'));
+
+        // Handle file add event
+        r.on('fileAdded', function(file, event){
+            r.upload(); // Auto start upload
+            document.getElementById('state').textContent = 'Uploading...';
+        });
+
+        r.on('fileSuccess', function(file, message){
+            document.getElementById('state').textContent = 'File upload complete!';
+            // You can trigger a refresh or update UI to show the uploaded file
+        });
+
+        r.on('fileError', function(file, message){
+            console.log('Error uploading', file, message);
+            document.getElementById('state').textContent = 'Error during upload.';
+        });
+
+        var state = {
+            upload_done: false,
+            merged_name: "",
+            merge_done: false
+        }
+
+        function update_ui() {
+            let state_line = document.getElementById('state');
+
+            if (state.upload_done) {
+                state_line.innerHTML = 'Merging segments, please wait...';
+            }
+            if (state.merge_done) {
+                state_line.innerHTML = 'Segments merged | Location: ' + state.merged_name;
+            }
+            if (!state.upload_done && !state.merge_done) {
+                state_line.innerHTML = 'Upload segments to merge';
+            }
+        }
+
+        function fill_state(data) {
+            state.upload_done = data.upload_done;
+            state.merged_name = data.merged_name;
+            state.merge_done = data.merge_done;
+        }
+
+        function get_status() {
+            fetch('/status').then(response => response.json()).then(data => {fill_state(data)}).catch(error => {
+                console.error(error);
+            });
+            update_ui();
+        }
+
+        setInterval(get_status, 100);
+    </script>
+</body>
+
+</html>
