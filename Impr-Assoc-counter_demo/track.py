@@ -1,3 +1,4 @@
+# Import necessary libraries and modules for video processing, object detection, and tracking
 
 import argparse
 import os
@@ -40,13 +41,15 @@ import super_gradients as sg
 from ultralytics import YOLO, NAS
 
 import color_transfer_cpu as ct_cpu
-# import color_transfer_gpu as ct_gpu
+import color_transfer_gpu as ct_gpu
 
 import csv
 import pandas as pd
 
+# Import necessary libraries and modules for video processing, object detection, and tracking
 IMAGE_EXT = [".jpg", ".jpeg", ".webp", ".bmp", ".png"]
 
+# Define the argument parser for command-line interface
 def make_parser():
   parser = argparse.ArgumentParser("Track and Count People with Improved Association Track!")
 
@@ -100,10 +103,11 @@ def make_parser():
   parser.add_argument("--color_source_path", help="path to color source image for color correction. 'path/to/image.ext' ext must be: ('jpg')")
   parser.add_argument('--color_calib_device', type=str, default="cpu", help='which device to use for color calibration. GPU requires OpeCV with CUDA')
 
-  parser.add_argument('--day_night_switch_file', type=str, default=None, help='The path to the file that defines which camera is being used. example in "example_day_night.txt"')
+  parser.add_argument('--day_night_switch_file', type=str, default="", help='The path to the file that defines which camera is being used. example in "example_day_night.txt"')
 
   return parser
 
+# Helper functions for creating output directories, saving configurations, and parsing files
 def create_run_folder(output_dir_name):
     # Create the main output directory if it doesn't exist
     if not os.path.exists(output_dir_name):
@@ -157,6 +161,8 @@ def parse_day_night_file(day_night_file):
     return day_night_dict
   return {}
 
+# Function to process a video file by applying a callback function on each frame
+# and saving the result to a target video file
 def process_video(
     source_path: str,
     target_path: str,
@@ -311,7 +317,9 @@ if __name__ == "__main__":
   line_zones = []
   with open(LINE_CROSSINGS_FILE, 'w') as f:
     # Change to use BOTTOM_CENTER as the trigger for a count (more intuitive)
-    triggering_anchors = [sv.Position.BOTTOM_CENTER]
+    # triggering_anchors = [sv.Position.BOTTOM_CENTER]
+    # Try triggering on bottom left and bottom right
+    triggering_anchors = [sv.Position.BOTTOM_LEFT, sv.Position.BOTTOM_RIGHT]
 
     for i, line in enumerate(count_lines):
       logger.info(f"line {line}")
@@ -323,7 +331,7 @@ if __name__ == "__main__":
 
   # parse the day night file
   camera_switches_dict = {}
-  if DAY_NIGHT_PATH != None or DAY_NIGHT_PATH != "":
+  if DAY_NIGHT_PATH != "":
     # dict of frame id's to which camera we are switching to.
     camera_switches_dict = parse_day_night_file(DAY_NIGHT_PATH)
     color_calib_enable = True
@@ -332,27 +340,9 @@ if __name__ == "__main__":
   else:
     color_calib_enable = False
 
-  # impr_assoc_tracker = ImprAssocTrack(track_high_thresh=args.track_high_thresh,
-  #                                       track_low_thresh=args.track_low_thresh,
-  #                                       new_track_thresh=args.new_track_thresh,
-  #                                       track_buffer=args.track_buffer,
-  #                                       match_thresh=args.match_thresh,
-  #                                       second_match_thresh=args.second_match_thresh,
-  #                                       overlap_thresh=args.overlap_thresh,
-  #                                       iou_weight=args.iou_weight,
-  #                                       proximity_thresh=args.proximity_thresh,
-  #                                       appearance_thresh=args.appearance_thresh,
-  #                                       with_reid=args.with_reid,
-  #                                       fast_reid_config=args.fast_reid_config,
-  #                                       fast_reid_weights=args.fast_reid_weights,
-  #                                       device=args.device,
-  #                                       frame_rate=video_info.fps)
+  print(f"Color calibration on? {color_calib_enable}")
 
-  #	impr_assoc_tracker = sv.ByteTrack(track_thresh=0.25,
-  #									 track_buffer=20,
-  #									 match_thresh=0.8,
-  #									 frame_rate=video_info.fps
-  #									 )
+# Initialize the object tracker based on the specified tracker type
   if OBJECT_TRACKER == "Impr_Assoc":
     if args.default_parameters:
       Tracker = ImprAssocTrack(with_reid=args.with_reid,
@@ -443,28 +433,39 @@ if __name__ == "__main__":
   # create instance of FPSMonitor
   fps_monitor = sv.FPSMonitor()
 
+# Check if color calibration is enabled
   if color_calib_enable:
-    if SOURCE_VIDEO_EXT == 'avi':
-      out = cv2.VideoWriter(TARGET_VIDEO_PATH_CLEAN, cv2.VideoWriter_fourcc(*'MJPG'), video_info.fps, (video_info.width, video_info.height))
-    else:
-      out = cv2.VideoWriter(TARGET_VIDEO_PATH_CLEAN, cv2.VideoWriter_fourcc(*'mp4v'), video_info.fps, (video_info.width, video_info.height))
+    # Check if frames should be saved
+    if args.save_frames:
+      # Check the video extension and create a VideoWriter object accordingly
+      if SOURCE_VIDEO_EXT == 'avi':
+        out = cv2.VideoWriter(TARGET_VIDEO_PATH_CLEAN, cv2.VideoWriter_fourcc(*'MJPG'), video_info.fps, (video_info.width, video_info.height))
+      else:
+        out = cv2.VideoWriter(TARGET_VIDEO_PATH_CLEAN, cv2.VideoWriter_fourcc(*'mp4v'), video_info.fps, (video_info.width, video_info.height))
+    # Check the device for color calibration
     if args.color_calib_device=="cpu":
       '''for cpu color correction'''
+      # Read the color source image and convert it to LAB color space
       color_source = cv2.imread(COLOR_SOURCE_PATH)
       color_source = cv2.cvtColor(color_source, cv2.COLOR_BGR2LAB).astype(np.float32)
+      # Calculate the statistics of the source image
       source_img_stats = ct_cpu.image_stats(color_source)
       print(source_img_stats)
 
     elif args.color_calib_device=="gpu":
       '''for gpu version'''
-      # Color source image to correct colors GPU
+      # Read the color source image and resize it to match the video dimensions
       color_source = cv2.imread(COLOR_SOURCE_PATH)
       color_source = cv2.resize(color_source, (video_info.width, video_info.height), interpolation=cv2.INTER_LINEAR)
+      # Upload the color source image to the GPU
       gpu_color_source = cv2.cuda_GpuMat()
       gpu_color_source.upload(color_source)
+      # Convert the color source image to LAB color space on the GPU
       cv2.cuda.cvtColor(gpu_color_source, cv2.COLOR_BGR2LAB, gpu_color_source)
+      # Calculate the statistics of the source image on the GPU
       source_img_stats = ct_gpu.image_stats_gpu(gpu_color_source)
 
+      # Create a GpuMat object for the frame
       gpu_frame = cv2.cuda_GpuMat()
       # # gpu_frame_resize = cv2.cuda_GpuMat()
       # # yolo_input_res = [640, 640]
@@ -483,58 +484,110 @@ if __name__ == "__main__":
   total_fps = 0
 
   def callback(frame: np.ndarray, frame_id: int, color_calib_device='cpu') -> np.ndarray:
+    """
+    This callback function is invoked for each frame of a video during the processing pipeline
+    implemented in Roboflow's `process_video` function. It performs a series of operations on the
+    given frame, including optional color calibration, object detection, object tracking, annotating,
+    and logging. It supports conditional color calibration based on a global flag and device specification,
+    utilizes different models for object detection, tracks objects across frames, annotates frames with
+    detection and tracking information, and logs progress and line crossing events.
+
+    Parameters:
+    - frame (np.ndarray): The current video frame to be processed. It is a NumPy array representing
+      the image data in BGR.
+    - frame_id (int): The identifier of the current frame. It is used for logging, tracking progress,
+      and conditional operations based on the frame sequence.
+    - color_calib_device (str, optional): Specifies the device to be used for color calibration. The default
+      is 'cpu', but it can be set to 'gpu'.
+
+    Returns:
+    - np.ndarray: The processed frame, potentially color-calibrated, annotated with object detections,
+      tracking information, and other annotations depending on the pipeline configuration.
+
+    The function internally manages several global variables for state tracking, including color calibration
+    flags, output video stream configuration, performance monitoring, and detection/tracking configurations.
+    It adapts to different configurations and models dynamically, supporting a flexible video processing
+    pipeline. This function is designed to be used as part of a larger video processing workflow, where
+    it is passed as a callback to a video processing utility function, allowing for custom processing logic
+    on a per-frame basis.
+    """
     global source_img_stats, out, fps_monitor, line_counts, args, total_fps, total_frames, color_calib_enable, camera_switches_dict
+    # Check if the current frame ID is in the dictionary of camera switches
     if frame_id in camera_switches_dict.keys():
-      if camera_switches_dict[frame_id] == [True]:
-        print(f"Switch to CC on! Frame: {frame_id}")
-        color_calib_enable = True
-      elif camera_switches_dict[frame_id] == [False]:
-        print(f"Switch to CC off! Frame: {frame_id}")
-        color_calib_enable = False
+        # If the value for this frame ID is True, enable color calibration
+        if camera_switches_dict[frame_id] == [True]:
+            print(f"Switch to CC on! Frame: {frame_id}")
+            color_calib_enable = True
+        # If the value for this frame ID is False, disable color calibration
+        elif camera_switches_dict[frame_id] == [False]:
+            print(f"Switch to CC off! Frame: {frame_id}")
+            color_calib_enable = False
+
+    # If color calibration is enabled
     if color_calib_enable:
-      ''' Color Calibration '''
-      if args.color_calib_device == 'cpu':
-        frame_cpu = ct_cpu.color_transfer_cpu(source_img_stats, frame, clip=False, preserve_paper=False)
-        out.write(frame_cpu); #print(frame)
-      elif args.color_calib_device == 'gpu':
-        gpu_frame.upload(frame)
-        frame_gpuMat = ct_gpu.color_transfer_gpu(source_img_stats, gpu_frame, clip=False, preserve_paper=False)
-        frame_cpu = frame_gpuMat.download()
-        out.write(frame_cpu)
-        frame = ct_gpu.gpu_mat_to_torch_tensor(frame_gpuMat)
+        ''' Color Calibration '''
+        # If the color calibration device is set to 'cpu', perform color transfer on the CPU
+        if args.color_calib_device == 'cpu':
+            frame_cpu = ct_cpu.color_transfer_cpu(source_img_stats, frame, clip=False, preserve_paper=False)
+        # If the color calibration device is set to 'gpu', perform color transfer on the GPU
+        elif args.color_calib_device == 'gpu':
+            gpu_frame.upload(frame)
+            frame_gpuMat = ct_gpu.color_transfer_gpu(source_img_stats, gpu_frame, clip=False, preserve_paper=False)
+            frame_cpu = frame_gpuMat.download()
+            frame = ct_gpu.gpu_mat_to_torch_tensor(frame_gpuMat)
+        # If the save_frames argument is set, write the frame to the output video
+        if args.save_frames:
+            out.write(frame_cpu)
     else:
-      frame_cpu = frame
+        frame_cpu = frame
 
     ''' Detection '''
+    # If the YOLO version is set to 'yolov8'
     if args.yolo_version == 'yolov8':
-      if MODEL_EXTENSION == "engine":
-        bgr, ratio, dwdh = letterbox(frame_cpu, (W,H))
-        rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
-        # rgb = frame_cpu.copy()
-        tensor = blob(rgb, return_seg=False)
-        dwdh = torch.asarray(dwdh*2, dtype=torch.float32, device=device)
-        tensor = torch.asarray(tensor, device=device)
-        data = Engine(tensor)
-        # print(data)
-        bboxes, scores, labels = det_postprocess(data)
-        detections = sv.Detections.empty()
-        detections.xyxy = ((bboxes-dwdh)/ratio).cpu().numpy()
-        detections.confidence = scores.cpu().numpy()
-
-        detections.class_id = labels.cpu().numpy().astype(int)
-        # if detections.confidence.size > 0:
-        #   print(detections)
-      else:
-        # yolov8
-        results = yolo_model.predict(frame_cpu, verbose=False, iou=0.7, conf=0.1, device="cuda")[0]
-        detections = sv.Detections.from_ultralytics(results)
-        detections = detections[np.isin(detections.class_id, selected_classes)]
-
+        # If the model extension is 'engine'
+        if MODEL_EXTENSION == "engine":
+            # Resize and pad the frame to the desired size (W, H) while keeping the aspect ratio
+            # The function also returns the scaling ratio and the width and height padding
+            bgr, ratio, dwdh = letterbox(frame_cpu, (W,H))
+            
+            # Convert the color space from BGR to RGB as the model was trained on RGB images
+            rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
+            
+            # Convert the image to a tensor and normalize it to the range [0, 1]
+            tensor = blob(rgb, return_seg=False)
+            
+            # Convert the width and height padding to a tensor and double its value
+            # This is done because the padding was divided by 2 when it was added to both sides of the image
+            dwdh = torch.asarray(dwdh*2, dtype=torch.float32, device=device)
+            
+            # Move the image tensor to the specified device (CPU or GPU)
+            tensor = torch.asarray(tensor, device=device)
+            
+            # Run the image tensor through the model and get the output
+            data = Engine(tensor)
+            
+            # Post-process the model output to get the bounding boxes, scores, and labels
+            bboxes, scores, labels = det_postprocess(data)
+            
+            # Create an empty Detections object to store the detection results
+            detections = sv.Detections.empty()
+            
+            # Convert the bounding boxes from the model output space to the original image space
+            # This is done by subtracting the padding and dividing by the scaling ratio
+            detections.xyxy = ((bboxes-dwdh)/ratio).cpu().numpy()
+            
+            # Store the scores and labels in the Detections object
+            detections.confidence = scores.cpu().numpy()
+            detections.class_id = labels.cpu().numpy().astype(int)
+        else:
+            results = yolo_model.predict(frame_cpu, verbose=False, iou=0.7, conf=0.1, device="cuda")[0]
+            detections = sv.Detections.from_ultralytics(results)
+            detections = detections[np.isin(detections.class_id, selected_classes)]
+    # If the YOLO version is set to 'yolo-nas'
     elif args.yolo_version == 'yolo-nas':
-      results = yolo_model.predict(frame_cpu, iou=0.7, conf=0.1, fuse_model=False)
-      detections = sv.Detections.from_yolo_nas(results)
-      detections = detections[np.isin(detections.class_id, selected_classes)]
-
+        results = yolo_model.predict(frame_cpu, iou=0.7, conf=0.1, fuse_model=False)
+        detections = sv.Detections.from_yolo_nas(results)
+        detections = detections[np.isin(detections.class_id, selected_classes)]
     ''' Tracking '''
     # commented one for impr_associated
     if OBJECT_TRACKER == "BYTETrack":

@@ -71,7 +71,9 @@ def count_lines_supervision(line_ends, bboxes, LINE_CROSSINGS_FILE):
   with open(LINE_CROSSINGS_FILE, 'w') as f:
     # f.write(f"\n")
     # Change to use BOTTOM_CENTER as the trigger for a count (more intuitive)
-    triggering_anchors = [sv.Position.BOTTOM_CENTER]
+    # triggering_anchors = [sv.Position.BOTTOM_CENTER]
+    # Try with bottom left and bottom right to get rid of counts from standing on the line.
+    triggering_anchors = [sv.Position.BOTTOM_LEFT, sv.Position.BOTTOM_RIGHT]
     for i, end_points in enumerate(line_ends):
         line_zones.append(LineZone(start=end_points[0], end=end_points[1], triggering_anchors=triggering_anchors))
         # write the line coordinates to the file with a comma after each one.

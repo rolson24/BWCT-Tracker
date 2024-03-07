@@ -44,13 +44,15 @@ def upload():
         if video:
             filename = video.filename
             video_path = os.path.join(app.config['UPLOADED_VIDEOS_DEST'], filename)
-            video.save(video_path)
+            if not os.path.exists(video_path):
+                video.save(video_path)
             # os.system(f"ffmpeg -i {video_path} -c:v libx264 -preset veryfast -crf 23 {app.config['UPLOADED_VIDEOS_DEST']}/{filename.split('.')[0]}.mp4")
             if exists('coordinates.txt'):
                 remove('coordinates.txt')
             return jsonify({'message': 'Video uploaded', 'filename': filename})
         return jsonify({'message': 'No video provided'}), 400
     else:
+        print("render template")
         return render_template('upload.html')  # replace 'index.html' with your actual template
 
 @app.route('/upload_day_night', methods=['GET', 'POST'])
@@ -225,7 +227,8 @@ def process_video(filename, save_video):
                     "--save-frames",
                     # "--color_calib_enable",
                     "--color_source_path", cc_source_path,
-                    "--day_night_switch_file", day_night_path
+                    "--color_calib_device", "cpu",
+                    # "--day_night_switch_file", day_night_path
                 ],
                 #  stdout=subprocess.PIPE,
                 #  stderr=subprocess.PIPE
@@ -243,7 +246,8 @@ def process_video(filename, save_video):
                     "-c", model_path,
                     # "--color_calib_enable",
                     "--color_source_path", cc_source_path,
-                    "--day_night_switch_file", day_night_path
+                    "--color_calib_device", "cpu",
+                    # "--day_night_switch_file", day_night_path
                 ],
                 #  stdout=subprocess.PIPE,
                 #  stderr=subprocess.PIPE
@@ -629,4 +633,4 @@ def get_track_data_plot(filename):
         return jsonify({'message': 'No runs found for the video'}),  404
 
 if __name__ == '__main__':
-    app.run(debug=False)
+    app.run(debug=False, port=5000)

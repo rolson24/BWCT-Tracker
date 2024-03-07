@@ -5,6 +5,7 @@ import cv2
 import numpy as np
 from numpy import ndarray
 
+
 # image suffixs
 SUFFIXS = ('.bmp', '.dng', '.jpeg', '.jpg', '.mpo', '.png', '.tif', '.tiff',
            '.webp', '.pfm')
@@ -44,6 +45,9 @@ def letterbox(im: ndarray,
                             cv2.BORDER_CONSTANT,
                             value=color)  # add border
     return im, r, (dw, dh)
+
+
+
 
 
 def blob(im: ndarray, return_seg: bool = False) -> Union[ndarray, Tuple]:

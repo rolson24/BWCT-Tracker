@@ -123,6 +123,7 @@ def gpu_mat_to_torch_tensor(gpu_mat):
     # Convert BGR to RGB (OpenCV uses BGR)
     cupy_array = cp.ascontiguousarray(cupy_array[:, :, ::-1])  # Assumes HWC format
 
+    # Pad the top and bottom to get the frame to be the correct size.
     current_height = cupy_array.shape[0]
     target_height = cp.ceil(current_height / 32) * 32
     padding_height = int(target_height - current_height)
