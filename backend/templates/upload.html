@@ -229,6 +229,22 @@
     </style>
 
     <script>
+        function drawArrow(ctx, fromx, fromy, tox, toy, arrowWidth, color) {
+            var headlen = 10; // length of head in pixels
+            var dx = tox - fromx;
+            var dy = toy - fromy;
+            var angle = Math.atan2(dy, dx);
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            ctx.lineWidth = arrowWidth;
+            ctx.beginPath();
+            ctx.moveTo(fromx, fromy);
+            ctx.lineTo(tox, toy);
+            ctx.lineTo(tox - headlen * Math.cos(angle - Math.PI / 6), toy - headlen * Math.sin(angle - Math.PI / 6));
+            ctx.moveTo(tox, toy);
+            ctx.lineTo(tox - headlen * Math.cos(angle + Math.PI / 6), toy - headlen * Math.sin(angle + Math.PI / 6));
+            ctx.stroke();
+        }
         window.addEventListener('beforeunload', function (e) {
             // Cancel the event
             e.preventDefault();
@@ -384,7 +400,7 @@
                         var out_label = document.createElement('span');
                         out_label.textContent = 'Out';  // Use the number of lines as the label
                         out_label.style.position = 'absolute';
-                        out_label.style.color = 'red';
+                        out_label.style.color = 'DarkGreen';
                         out_label.style.fontSize = '15px';
                         out_label.style.fontWeight = 'bold';
                         out_label.style.pointerEvents = 'none';  // Prevent the label from being interacted with
@@ -392,20 +408,27 @@
                         var in_label = document.createElement('span');
                         in_label.textContent = 'In';  // Use the number of lines as the label
                         in_label.style.position = 'absolute';
-                        in_label.style.color = 'red';
+                        in_label.style.color = 'blue';
                         in_label.style.fontSize = '15px';
                         in_label.style.fontWeight = 'bold';
                         in_label.style.pointerEvents = 'none';  // Prevent the label from being interacted with
 
                         var labelWidth = 50;
-                        var dirLabelWidth = 30;
+                        var outLabelWidth = 30;
+                        var inLabelWidth = 20;
                         var labelHeight = 20;
+
+                        var arrowLength = 40;
+                        var arrowWidth = 2;
 
                         var canvas_y_offset = Number((canvas.style.top).split('p')[0]);
                         console.log(`${canvas.style.top.split('p')[0]}`);
 
                         lineStart.y += canvas_y_offset;
                         y += canvas_y_offset;
+
+                        var line_min_x = Math.min(lineStart.x, x)
+                        var line_min_y = Math.min(lineStart.y, y)
 
                         // Calculate the angle of the line
                         var angle = Math.atan2(lineStart.y - y, x - lineStart.x);
@@ -417,36 +440,116 @@
                             label.style.left = (x - labelWidth) + 'px'; // Position to the left of the endpoint
                             label.style.top = (y - labelHeight) + 'px'; // Position above the endpoint
 
-                            in_label.style.left = ((x - lineStart.x) / 2 + 10 + lineStart.x) + 'px'          // Position to the right of the line
-                            in_label.style.top = ((lineStart.y - y) / 2 + y) + 'px'  // Position below the line
-                            console.log(`Out label ${out_label.style.left}, ${out_label.style.top}`)
+                            midpoint_x = (x - lineStart.x) / 2 + line_min_x;
+                            midpoint_y = (lineStart.y - y) / 2 + line_min_y;
+                            arrow_midpoint_y = midpoint_y - canvas_y_offset;
+                            angle_new = Math.PI/2 - angle
+                            console.log(`angle new: ${angle_new}`)
+                            arrow_x = Math.abs(Math.cos(angle_new) * arrowLength);
+                            arrow_y = Math.abs(Math.sin(angle_new) * arrowLength);
+                            console.log(`arrow x: ${arrow_x}, arrow y: ${arrow_y}`)
 
-                            out_label.style.left = ((x - lineStart.x) / 2 - dirLabelWidth + lineStart.x) + 'px'    // Position to the left of the line
-                            out_label.style.top = ((lineStart.y - y) / 2 - labelHeight + y) + 'px'   // Position above the line
+                            in_left = midpoint_x + 10;
+                            in_top = midpoint_y;
+
+                            out_left = midpoint_x - outLabelWidth;
+                            out_top = midpoint_y - labelHeight;
+
+                            in_center_x = in_left + inLabelWidth/2;
+                            in_center_y = in_top + labelHeight/2;
+
+                            out_center_x = out_left + outLabelWidth/2;
+                            out_center_y = out_top + labelHeight/2;
+
+                            in_label.style.left = (in_left) + 'px'          // Position to the right of the line
+                            in_label.style.top = (in_top) + 'px'  // Position below the line
+                            console.log(`In label ${in_label.style.left}, ${in_label.style.top}`)
+                            // in arrow
+                            drawArrow(ctx, in_center_x, (in_center_y - canvas_y_offset), in_center_x - arrow_x, in_center_y - canvas_y_offset - arrow_y, arrowWidth, 'blue');
+
+                            out_label.style.left = (out_left) + 'px'    // Position to the left of the line
+                            out_label.style.top = (out_top) + 'px'   // Position above the line
+                            console.log(`Out label ${out_label.style.left}, ${out_label.style.top}`)
+                            // out arrow
+                            drawArrow(ctx, out_center_x, out_center_y - canvas_y_offset, out_center_x + arrow_x, out_center_y - canvas_y_offset + arrow_y, arrowWidth, 'DarkGreen');
+
                         } else if (angle > Math.PI / 2 && angle < Math.PI) {
                             // Line is drawn from bottom right to top left
                             console.log('Line is drawn from bottom right to top left');
                             label.style.left = (x + 10) + 'px'; // Position to the right of the endpoint
                             label.style.top = (y - labelHeight) + 'px'; // Position below the endpoint
 
-                            in_label.style.left = ((lineStart.x - x) / 2 + 10 + x) + 'px' // Position to the right of the line
-                            in_label.style.top = ((lineStart.y - y) / 2 - labelHeight + y) + 'px' // Position above the line
-                            console.log(`Out label ${out_label.style.left}, ${out_label.style.top}`)
+                            midpoint_x = (lineStart.x - x) / 2 + line_min_x;
+                            midpoint_y = (lineStart.y - y) / 2 + line_min_y;
+                            arrow_midpoint_y = midpoint_y - canvas_y_offset;
 
-                            out_label.style.left = ((lineStart.x - x) / 2 - dirLabelWidth + x) + 'px' // Position to the left of the line
-                            out_label.style.top = ((lineStart.y - y) / 2 + y) + 'px'  // Position below the line
+                            angle_new = Math.PI/2 - angle
+                            console.log(`angle new: ${angle_new}`)
+                            arrow_x = Math.abs(Math.cos(angle_new) * arrowLength);
+                            arrow_y = Math.abs(Math.sin(angle_new) * arrowLength);
+                            console.log(`arrow x: ${arrow_x}, arrow y: ${arrow_y}`)
+
+                            in_left = midpoint_x + 10;
+                            in_top = midpoint_y - labelHeight;
+
+                            out_left = midpoint_x - outLabelWidth;
+                            out_top = midpoint_y;
+
+                            in_center_x = in_left + inLabelWidth/2;
+                            in_center_y = in_top + labelHeight/2;
+                            
+                            out_center_x = out_left + outLabelWidth/2;
+                            out_center_y = out_top + labelHeight/2;
+
+                            in_label.style.left = (in_left) + 'px' // Position to the right of the line
+                            in_label.style.top = (in_top) + 'px' // Position above the line
+                            console.log(`In label ${in_label.style.left}, ${in_label.style.top}`)
+                            // in arrow
+                            drawArrow(ctx, in_center_x, in_center_y - canvas_y_offset, in_center_x - arrow_x, in_center_y - canvas_y_offset + arrow_y, arrowWidth, 'blue');
+
+                            out_label.style.left = (out_left) + 'px' // Position to the left of the line
+                            out_label.style.top = (out_top) + 'px'  // Position below the line
+                            // out arrow
+                            drawArrow(ctx, out_center_x, out_center_y - canvas_y_offset, out_center_x + arrow_x, out_center_y - canvas_y_offset - arrow_y, arrowWidth, 'DarkGreen');
+
                         } else if (angle > -Math.PI && angle < -Math.PI / 2) {
                             // Line is drawn from top right to bottom left
                             console.log('Line is drawn from top right to bottom left');
                             label.style.left = (x + 10) + 'px'; // Position to the right of the endpoint
                             label.style.top = y + 'px';
 
-                            in_label.style.left = ((lineStart.x - x) / 2 - dirLabelWidth + x) + 'px' // Position to the left of the line
-                            in_label.style.top = ((y - lineStart.y) / 2 - labelHeight + lineStart.y) + 'px' // Position above the line
-                            console.log(`Out label ${out_label.style.left}, ${out_label.style.top}`)
+                            midpoint_x = (lineStart.x - x) / 2 + line_min_x;
+                            midpoint_y = (y - lineStart.y) / 2 + line_min_y;
+                            arrow_midpoint_y = midpoint_y - canvas_y_offset;
 
-                            out_label.style.left = ((lineStart.x - x) / 2 + 10 + x) + 'px'           // Position to the right of the line
-                            out_label.style.top = ((y - lineStart.y) / 2 + lineStart.y) + 'px'   // Position below the line
+                            angle_new = Math.PI/2 - angle
+                            console.log(`angle new: ${angle_new}`)
+                            arrow_x = Math.abs(Math.cos(angle_new) * arrowLength);
+                            arrow_y = Math.abs(Math.sin(angle_new) * arrowLength);
+                            console.log(`arrow x: ${arrow_x}, arrow y: ${arrow_y}`)
+
+                            in_left = midpoint_x - inLabelWidth;
+                            in_top = midpoint_y - labelHeight;
+
+                            out_left = midpoint_x + 10;
+                            out_top = midpoint_y;
+
+                            in_center_x = in_left + inLabelWidth/2;
+                            in_center_y = in_top + labelHeight/2;
+                            
+                            out_center_x = out_left + outLabelWidth/2;
+                            out_center_y = out_top + labelHeight/2;
+
+                            in_label.style.left = (in_left) + 'px' // Position to the left of the line
+                            in_label.style.top = (in_top) + 'px' // Position above the line
+                            console.log(`In label ${in_label.style.left}, ${in_label.style.top}`)
+                            // in arrow
+                            drawArrow(ctx, in_center_x, in_center_y - canvas_y_offset, in_center_x + arrow_x, in_center_y - canvas_y_offset + arrow_y, arrowWidth, 'blue');
+
+                            out_label.style.left = (out_left) + 'px'           // Position to the right of the line
+                            out_label.style.top = (out_top) + 'px'   // Position below the line
+                            // out arrow
+                            drawArrow(ctx, out_center_x, out_center_y - canvas_y_offset, out_center_x - arrow_x, out_center_y - canvas_y_offset - arrow_y, arrowWidth, 'DarkGreen');
 
                             
                         } else {
@@ -455,12 +558,38 @@
                             label.style.left = (x - labelWidth) + 'px'; // Position to the left of the endpoint
                             label.style.top = y + 'px';
 
-                            in_label.style.left = ((x - lineStart.x) / 2 - dirLabelWidth + lineStart.x) + 'px' // Position to the left of the line
-                            in_label.style.top = ((y - lineStart.y) / 2 + lineStart.y) + 'px' // Position below the line
-                            console.log(`Out label ${out_label.style.left}, ${out_label.style.top}`)
+                            midpoint_x = (x - lineStart.x) / 2 + line_min_x;
+                            midpoint_y = (y - lineStart.y) / 2 + line_min_y;
+                            arrow_midpoint_y = midpoint_y - canvas_y_offset;
 
-                            out_label.style.left = ((x - lineStart.x) / 2 + 10 + lineStart.x) + 'px' // Position to the right of the line
-                            out_label.style.top = ((y - lineStart.y) / 2 - labelHeight + lineStart.y) + 'px'  // Position above the line
+                            angle_new = Math.PI/2 - angle
+                            console.log(`angle new: ${angle_new}`)
+                            arrow_x = Math.abs(Math.cos(angle_new) * arrowLength);
+                            arrow_y = Math.abs(Math.sin(angle_new) * arrowLength);
+                            console.log(`arrow x: ${arrow_x}, arrow y: ${arrow_y}`)
+
+                            in_left = midpoint_x - inLabelWidth;
+                            in_top = midpoint_y;
+
+                            out_left = midpoint_x + 10;
+                            out_top = midpoint_y - labelHeight;
+
+                            in_center_x = in_left + inLabelWidth/2;
+                            in_center_y = in_top + labelHeight/2;
+                            
+                            out_center_x = out_left + outLabelWidth/2;
+                            out_center_y = out_top + labelHeight/2;
+
+                            in_label.style.left = (in_left) + 'px' // Position to the left of the line
+                            in_label.style.top = (in_top) + 'px' // Position below the line
+                            console.log(`In label ${in_label.style.left}, ${in_label.style.top}`)
+                            // in arrow
+                            drawArrow(ctx, in_center_x, in_center_y - canvas_y_offset, in_center_x + arrow_x, in_center_y - canvas_y_offset - arrow_y, arrowWidth, 'blue');
+
+                            out_label.style.left = (out_left) + 'px' // Position to the right of the line
+                            out_label.style.top = (out_top) + 'px'  // Position above the line
+                            // out arrow
+                            drawArrow(ctx, out_center_x, out_center_y - canvas_y_offset, out_center_x - arrow_x, out_center_y - canvas_y_offset + arrow_y, arrowWidth, 'DarkGreen');
 
                         }
                         document.querySelector('.video-container').appendChild(label);

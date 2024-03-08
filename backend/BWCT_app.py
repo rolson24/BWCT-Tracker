@@ -6,6 +6,8 @@ from flask_uploads import UploadSet, configure_uploads, ALL
 from flask import Response, stream_with_context
 from flask_socketio import SocketIO
 
+import atexit
+
 from werkzeug.utils import secure_filename
 import os
 import subprocess
@@ -93,6 +95,8 @@ def receive_file_paths():
     print(data)
     file_paths = data['filenames']
     print(file_paths)
+    if exists('coordinates.txt'):
+        remove('coordinates.txt')
     # Process the file paths as needed here
     for path in file_paths:
         observer = start_file_watching(path, handle_file_change)
@@ -698,6 +702,12 @@ def get_track_data_plot():
     else:
         return jsonify({'message': 'No runs found for the video'}),  404
 
+def shutdown_handler():
+    """Handle shutdown. Delete coordinates file"""
+    if exists('coordinates.txt'):
+        remove('coordinates.txt')
+
 if __name__ == '__main__':
     print("start webapp")
+    atexit.register(shutdown_handler)
     app.run(debug=False, port=5000)
