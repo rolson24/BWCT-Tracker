@@ -477,8 +477,9 @@ if __name__ == "__main__":
   for i in range(len(line_zones)):
     class_counts = {}
     for val in CLASS_NAMES_DICT.values():
-      class_counts[val+"_in"] = 0
-      class_counts[val+"_out"] = 0
+      if val != "Wheelchairs":
+        class_counts[val+"_in"] = 0
+        class_counts[val+"_out"] = 0
     line_counts.append(class_counts)
 
   total_fps = 0
