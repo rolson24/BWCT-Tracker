@@ -236,17 +236,19 @@ def calculate_estimated_time_remaining(progress, processing_seconds):
 @app.route('/process', methods=['POST'])
 def process():
     # Use request.form or request.files to access the data
-    # filename = request.form.get('filename')
-    save_video = request
+    data = request.json  # Get the JSON data sent with the POST request
+    save_video = data.get('save_video', 'no')  # Use .get to provide a default value of 'no'
+  
     if save_video == "yes":
         save_video = True
     elif save_video == "no":
         save_video = False
+        
     filename = file_paths[0]
 
 
     print("Received filename:", filename)
-    # print("Save video option:", save_video)
+    print("Save video option:", save_video)
 
     if filename:
         # Pass both filename and save_video to your processing function
@@ -484,7 +486,7 @@ def get_crossings_data():
         crossings_df['time'] = crossings_df['timestamp'].dt.time
 
         crossings_df.set_index('timestamp', inplace=True)
-        hourly_counts = crossings_df.groupby([pd.Grouper(freq='H'), 'line_num', 'class_name', 'direction']).size().reset_index(name='count')
+        hourly_counts = crossings_df.groupby([pd.Grouper(freq='15min'), 'line_num', 'class_name', 'direction']).size().reset_index(name='count')
 
         # Use the formatted 'time' for plotting
         hourly_counts['time'] = hourly_counts['timestamp'].dt.time

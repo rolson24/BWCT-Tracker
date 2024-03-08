@@ -627,7 +627,11 @@
                     $('#processing-loader').show()
                     fetch('/process', {
                         method: 'POST',
-                        body: saveVideo  // Use FormData directly
+                        headers: {
+                            'Content-Type': 'application/json',  // Indicate that you're sending JSON data
+                        },
+                        body: JSON.stringify({ save_video: saveVideo })  // Convert your data into a JSON string
+
                     })
                         .then(response => {
                             if (!response.ok) {
@@ -880,7 +884,7 @@
                         // Configure the layout
                         let layout = {
                             barmode: 'group', // or 'stack' if you want stacked bars
-                            title: 'Counts per Hour',
+                            title: 'Counts per 15 min',
                             xaxis: {
                                 title: 'Time',
                                 tickangle: -45
