@@ -627,13 +627,25 @@ if __name__ == "__main__":
     for i, line_zone in enumerate(line_zones):
         objects_in, objects_out = line_zone.trigger(detections)
         for obj in detections.class_id[np.isin(objects_in, True)]:
-            line_counts[i][CLASS_NAMES_DICT[obj]+"_in"] += 1
-            with open(LINE_CROSSINGS_FILE, 'a') as f:
-                f.write(f"{frame_id},{i},{CLASS_NAMES_DICT[obj]},in\n")
+            classname = CLASS_NAMES_DICT[obj]
+            if classname == "Wheelchairs":
+              line_counts[i]["Pedestrians_in"] += 1
+              with open(LINE_CROSSINGS_FILE, 'a') as f:
+                f.write(f"{frame_id},{i},Pedestrians,in\n")
+            else:
+              line_counts[i][classname+"_in"] += 1
+              with open(LINE_CROSSINGS_FILE, 'a') as f:
+                  f.write(f"{frame_id},{i},{classname},in\n")
         for obj in detections.class_id[np.isin(objects_out, True)]:
-            line_counts[i][CLASS_NAMES_DICT[obj]+"_out"] += 1
-            with open(LINE_CROSSINGS_FILE, 'a') as f:
-                f.write(f"{frame_id},{i},{CLASS_NAMES_DICT[obj]},out\n")
+            classname = CLASS_NAMES_DICT[obj]
+            if classname == "Wheelchairs":
+              line_counts[i]["Pedestrians_out"] += 1
+              with open(LINE_CROSSINGS_FILE, 'a') as f:
+                f.write(f"{frame_id},{i},Pedestrians,out\n")
+            else:
+              line_counts[i][classname+"_out"] += 1
+              with open(LINE_CROSSINGS_FILE, 'a') as f:
+                  f.write(f"{frame_id},{i},{classname},out\n")
 
     fps_monitor.tick()
     total_fps += fps_monitor()

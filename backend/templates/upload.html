@@ -449,11 +449,11 @@
                             arrow_y = Math.abs(Math.sin(angle_new) * arrowLength);
                             console.log(`arrow x: ${arrow_x}, arrow y: ${arrow_y}`)
 
-                            in_left = midpoint_x + 10;
-                            in_top = midpoint_y;
+                            out_left = midpoint_x + 10;
+                            out_top = midpoint_y;
 
-                            out_left = midpoint_x - outLabelWidth;
-                            out_top = midpoint_y - labelHeight;
+                            in_left = midpoint_x - outLabelWidth;
+                            in_top = midpoint_y - labelHeight;
 
                             in_center_x = in_left + inLabelWidth/2;
                             in_center_y = in_top + labelHeight/2;
@@ -465,13 +465,13 @@
                             in_label.style.top = (in_top) + 'px'  // Position below the line
                             console.log(`In label ${in_label.style.left}, ${in_label.style.top}`)
                             // in arrow
-                            drawArrow(ctx, in_center_x, (in_center_y - canvas_y_offset), in_center_x - arrow_x, in_center_y - canvas_y_offset - arrow_y, arrowWidth, 'blue');
+                            drawArrow(ctx, in_center_x, (in_center_y - canvas_y_offset), in_center_x + arrow_x, in_center_y - canvas_y_offset + arrow_y, arrowWidth, 'blue');
 
                             out_label.style.left = (out_left) + 'px'    // Position to the left of the line
                             out_label.style.top = (out_top) + 'px'   // Position above the line
                             console.log(`Out label ${out_label.style.left}, ${out_label.style.top}`)
                             // out arrow
-                            drawArrow(ctx, out_center_x, out_center_y - canvas_y_offset, out_center_x + arrow_x, out_center_y - canvas_y_offset + arrow_y, arrowWidth, 'DarkGreen');
+                            drawArrow(ctx, out_center_x, out_center_y - canvas_y_offset, out_center_x - arrow_x, out_center_y - canvas_y_offset - arrow_y, arrowWidth, 'DarkGreen');
 
                         } else if (angle > Math.PI / 2 && angle < Math.PI) {
                             // Line is drawn from bottom right to top left
@@ -489,11 +489,11 @@
                             arrow_y = Math.abs(Math.sin(angle_new) * arrowLength);
                             console.log(`arrow x: ${arrow_x}, arrow y: ${arrow_y}`)
 
-                            in_left = midpoint_x + 10;
-                            in_top = midpoint_y - labelHeight;
+                            out_left = midpoint_x + 10;
+                            out_top = midpoint_y - labelHeight;
 
-                            out_left = midpoint_x - outLabelWidth;
-                            out_top = midpoint_y;
+                            in_left = midpoint_x - outLabelWidth;
+                            in_top = midpoint_y;
 
                             in_center_x = in_left + inLabelWidth/2;
                             in_center_y = in_top + labelHeight/2;
@@ -505,12 +505,12 @@
                             in_label.style.top = (in_top) + 'px' // Position above the line
                             console.log(`In label ${in_label.style.left}, ${in_label.style.top}`)
                             // in arrow
-                            drawArrow(ctx, in_center_x, in_center_y - canvas_y_offset, in_center_x - arrow_x, in_center_y - canvas_y_offset + arrow_y, arrowWidth, 'blue');
+                            drawArrow(ctx, in_center_x, in_center_y - canvas_y_offset, in_center_x + arrow_x, in_center_y - canvas_y_offset - arrow_y, arrowWidth, 'blue');
 
                             out_label.style.left = (out_left) + 'px' // Position to the left of the line
                             out_label.style.top = (out_top) + 'px'  // Position below the line
                             // out arrow
-                            drawArrow(ctx, out_center_x, out_center_y - canvas_y_offset, out_center_x + arrow_x, out_center_y - canvas_y_offset - arrow_y, arrowWidth, 'DarkGreen');
+                            drawArrow(ctx, out_center_x, out_center_y - canvas_y_offset, out_center_x - arrow_x, out_center_y - canvas_y_offset + arrow_y, arrowWidth, 'DarkGreen');
 
                         } else if (angle > -Math.PI && angle < -Math.PI / 2) {
                             // Line is drawn from top right to bottom left
@@ -528,11 +528,11 @@
                             arrow_y = Math.abs(Math.sin(angle_new) * arrowLength);
                             console.log(`arrow x: ${arrow_x}, arrow y: ${arrow_y}`)
 
-                            in_left = midpoint_x - inLabelWidth;
-                            in_top = midpoint_y - labelHeight;
+                            out_left = midpoint_x - inLabelWidth;
+                            out_top = midpoint_y - labelHeight;
 
-                            out_left = midpoint_x + 10;
-                            out_top = midpoint_y;
+                            in_left = midpoint_x + 10;
+                            in_top = midpoint_y;
 
                             in_center_x = in_left + inLabelWidth/2;
                             in_center_y = in_top + labelHeight/2;
@@ -544,12 +544,12 @@
                             in_label.style.top = (in_top) + 'px' // Position above the line
                             console.log(`In label ${in_label.style.left}, ${in_label.style.top}`)
                             // in arrow
-                            drawArrow(ctx, in_center_x, in_center_y - canvas_y_offset, in_center_x + arrow_x, in_center_y - canvas_y_offset + arrow_y, arrowWidth, 'blue');
+                            drawArrow(ctx, in_center_x, in_center_y - canvas_y_offset, in_center_x - arrow_x, in_center_y - canvas_y_offset - arrow_y, arrowWidth, 'blue');
 
                             out_label.style.left = (out_left) + 'px'           // Position to the right of the line
                             out_label.style.top = (out_top) + 'px'   // Position below the line
                             // out arrow
-                            drawArrow(ctx, out_center_x, out_center_y - canvas_y_offset, out_center_x - arrow_x, out_center_y - canvas_y_offset - arrow_y, arrowWidth, 'DarkGreen');
+                            drawArrow(ctx, out_center_x, out_center_y - canvas_y_offset, out_center_x + arrow_x, out_center_y - canvas_y_offset + arrow_y, arrowWidth, 'DarkGreen');
 
                             
                         } else {
@@ -568,11 +568,11 @@
                             arrow_y = Math.abs(Math.sin(angle_new) * arrowLength);
                             console.log(`arrow x: ${arrow_x}, arrow y: ${arrow_y}`)
 
-                            in_left = midpoint_x - inLabelWidth;
-                            in_top = midpoint_y;
+                            out_left = midpoint_x - inLabelWidth;
+                            out_top = midpoint_y;
 
-                            out_left = midpoint_x + 10;
-                            out_top = midpoint_y - labelHeight;
+                            in_left = midpoint_x + 10;
+                            in_top = midpoint_y - labelHeight;
 
                             in_center_x = in_left + inLabelWidth/2;
                             in_center_y = in_top + labelHeight/2;
@@ -584,12 +584,12 @@
                             in_label.style.top = (in_top) + 'px' // Position below the line
                             console.log(`In label ${in_label.style.left}, ${in_label.style.top}`)
                             // in arrow
-                            drawArrow(ctx, in_center_x, in_center_y - canvas_y_offset, in_center_x + arrow_x, in_center_y - canvas_y_offset - arrow_y, arrowWidth, 'blue');
+                            drawArrow(ctx, in_center_x, in_center_y - canvas_y_offset, in_center_x - arrow_x, in_center_y - canvas_y_offset + arrow_y, arrowWidth, 'blue');
 
                             out_label.style.left = (out_left) + 'px' // Position to the right of the line
                             out_label.style.top = (out_top) + 'px'  // Position above the line
                             // out arrow
-                            drawArrow(ctx, out_center_x, out_center_y - canvas_y_offset, out_center_x - arrow_x, out_center_y - canvas_y_offset + arrow_y, arrowWidth, 'DarkGreen');
+                            drawArrow(ctx, out_center_x, out_center_y - canvas_y_offset, out_center_x + arrow_x, out_center_y - canvas_y_offset - arrow_y, arrowWidth, 'DarkGreen');
 
                         }
                         document.querySelector('.video-container').appendChild(label);
