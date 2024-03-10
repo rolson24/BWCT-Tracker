@@ -5,6 +5,7 @@ const fetch = import('node-fetch');
 let mainWindow;
 let flaskProcess = null;
 const fs = require('fs');
+const fsExtra = require('fs-extra'); // Import fs-extra
 
 function createWindow() {
     mainWindow = new BrowserWindow({
@@ -64,6 +65,21 @@ async function getCrossingsFilePath() {
         return crossingsFilePath;
     } catch (error) {
         console.error("Failed to get crossings file path:", error);
+        return null;
+    }
+}
+
+async function getPlots(){
+    try {
+        const fetch = (await import('node-fetch')).default;
+        const response = await fetch('http://localhost:5000/get_plots');
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        const plots_dir = await response.text();
+        return plots_dir;
+    } catch {
+        console.error("Failed to get plots data:", error);
         return null;
     }
 }
@@ -202,8 +218,52 @@ function startFlaskApp() {
                         event.sender.send('save-line-crossings-file-response', 'success');
                     }
                 });
+            });
 
+            ipcMain.on('save-plots-folder', async (event) => {
+                const plotsDirPath = await getPlots();  // Retrieve the counts file path
+
+                if (!plotsDirPath || plotsDirPath.includes("No video file provided") || plotsDirPath.includes("Counts file not found") || plotsDirPath.includes("No runs found")) {
+                    console.error('Failed to get plots directory path:', plotsDirPath);
+                    event.sender.send('save-plots-folder-response', 'failure');
+                    return;
+                }
+                const { canceled, filePaths } = await dialog.showOpenDialog({
+                    title: 'Select Destination Folder for Plots',
+                    buttonLabel: 'Select', // This label might not always be customizable for directory dialogs
+                    properties: ['openDirectory', 'createDirectory']
+                });
                 
+                if (canceled || filePaths.length === 0) {
+                    console.log('No folder selected.');
+                    event.sender.send('save-plots-folder-response', 'canceled');
+                    return;
+                }
+                
+                const destinationPath = filePaths[0]; // The selected directory path
+                console.log("Selected folder:", destinationPath);
+
+                // The new directory where files will be copied
+                const newPlotsDir = path.join(destinationPath, 'plots');
+
+                // Create the new directory and copy files
+                fsExtra.ensureDir(newPlotsDir, (err) => {
+                    if (err) {
+                        console.error('Failed to create plots directory:', err);
+                        event.sender.send('save-plots-folder-response', 'failure');
+                        return;
+                    }
+                    // Copy the directory
+                    fsExtra.copy(plotsDirPath, newPlotsDir, (copyErr) => {
+                        if (copyErr) {
+                            console.error('Failed to copy plots directory:', copyErr);
+                            event.sender.send('save-plots-folder-response', 'failure');
+                        } else {
+                            console.log('Plots directory copied successfully');
+                            event.sender.send('save-plots-folder-response', 'success');
+                        }
+                    });
+                });
             });
         }
     });

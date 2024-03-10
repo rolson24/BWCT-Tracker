@@ -5,6 +5,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   saveCountsFile: () => ipcRenderer.send('save-counts-file'),
   saveProcessedVideoFile: () => ipcRenderer.send('save-processed-video-file'),
   saveLineCrossingsFile: () => ipcRenderer.send('save-line-crossings-file'),
+  savePlots: () => ipcRenderer.send('save-plots-folder'),
 
 });
 

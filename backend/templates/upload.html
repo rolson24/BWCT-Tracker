@@ -83,6 +83,8 @@
                 Processed Video</button>
             <a id="download-processed-video-link" href="" download style="display: none">Download Processed Video</a>
 
+            <button id="download-plots-button" class="btn btn-secondary mt-3" style="display: none">Download
+                Graphs</button>
         </div>
 
         <h5 id="estimated-time">Estimated time remaining:</h5>
@@ -94,7 +96,7 @@
         </div>
 
 
-        <div id="counts-graph"></div>
+        <div id="counts-plot"></div>
         <!-- Add this to your upload.html where you want to display the counts -->
         <div id="counts-display" style="margin-top:   20px;">
             <table id="counts-table" class="table">
@@ -693,6 +695,11 @@
 
             });
 
+            $('#download-plots-button').on('click', function () {
+                window.electronAPI.savePlots();
+
+            });
+
             // $('#download-counts-button').on('click', function () {
             //     $('#download-counts-link')[0].click();
             // });
@@ -729,78 +736,96 @@
                     // Inside the fetch success callback
                     .then(data => {
                         // Parse the counts data into an array of objects
-                        var lines = data.counts.split('\n\n');
-                        var countsData = [];
+                        // var lines = data.counts.split('\n\n');
+                        // var countsData = [];
+                        countsData = data.countsData;
                         var currentLine = 0;
                         var avgFPS;
                         video_name = data.filename
-                        lines.forEach(line => {
-                            var parts = line.split('\n');
-                            var lineName = parts[0];
-                            console.log('Line:', lineName);
-                            console.log('Parts:', parts);
-
-                            parts.forEach(part => {
-                                console.log('Part:', part);
-                                var classParts = part.split(/[\s,]+/); // Split the part by spaces or commas
-                                console.log('Class parts:', classParts);
-                                if (classParts[0] === 'line') { // If the first part is 'line', set the current line
-                                    currentLine = classParts[1];
-                                } else if (classParts[0] === 'Average' && classParts[1] === 'FPS:') {
-                                    avgFPS = classParts[2];
-                                } else {
-                                    var classData = classParts[0].split('_') // Split the class name by underscores
-                                    countsData.push({
-                                        line: 'Line ' + currentLine,
-                                        class: classData[0],
-                                        direction: classData[1],
-                                        count: classParts[1]
-                                    });
-                                }
-                            });
-                        })
-
-                        // Create the data for the Plotly graph
-                        var graphData = [];
-                        countsData.forEach(count => {
-                            // Find the trace for this class and direction, or create a new one if it doesn't exist
-                            var trace = graphData.find(trace => trace.name === 'Class ' + count.class + ' ' + count.direction);
-                            if (!trace) {
-                                trace = {
-                                    x: [],
-                                    y: [],
-                                    type: 'bar',
-                                    name: 'Class ' + count.class + ' ' + count.direction
-                                };
-                                graphData.push(trace);
-                            }
-
-                            // Add the data for this count to the trace
-                            trace.x.push(count.line);
-                            trace.y.push(count.count);
-                        });
-
-                        // Create the layout for the Plotly graph
-                        var layout = {
-                            title: 'Counts by Line',
-                            xaxis: {
-                                title: 'Line'
-                            },
-                            yaxis: {
-                                title: 'Count'
-                            },
-                            barmode: 'group'
-                        };
-
-                        // Create the Plotly graph
-                        Plotly.newPlot('counts-graph', graphData, layout, {
+                        // Parse the JSON string into a JavaScript object
+                        var fig = JSON.parse(data.plot);
+                        console.log(`plotly figure ${fig.data}`);
+                        // Use Plotly to render the graph
+                        Plotly.newPlot('counts-plot', fig.data, fig.layout, {
                             toImageButtonOptions: {
-                                filename: video_name + '_counts_by_line',
+                                filename: video_name + '_tracks_overlay',
                                 height: null,
                                 width: null,
                                 format: 'png'
                             }
                         });
+                        // lines.forEach(line => {
+                        //     var parts = line.split('\n');
+                        //     var lineName = parts[0];
+                        //     console.log('Line:', lineName);
+                        //     console.log('Parts:', parts);
+
+                        //     parts.forEach(part => {
+                        //         console.log('Part:', part);
+                        //         var classParts = part.split(/[\s,]+/); // Split the part by spaces or commas
+                        //         console.log('Class parts:', classParts);
+                        //         if (classParts[0] === 'line') { // If the first part is 'line', set the current line
+                        //             currentLine = classParts[1];
+                        //         } else if (classParts[0] === 'Average' && classParts[1] === 'FPS:') {
+                        //             avgFPS = classParts[2];
+                        //         } else {
+                        //             var classData = classParts[0].split('_') // Split the class name by underscores
+                        //             countsData.push({
+                        //                 line: 'Line ' + currentLine,
+                        //                 class: classData[0],
+                        //                 direction: classData[1],
+                        //                 count: classParts[1]
+                        //             });
+                        //         }
+                        //     });
+                        // })
+
+                        // // Create the data for the Plotly graph
+                        // var graphData = [];
+                        // countsData.forEach(count => {
+                        //     // Find the trace for this class and direction, or create a new one if it doesn't exist
+                        //     var trace = graphData.find(trace => trace.name === 'Class ' + count.class + ' ' + count.direction);
+                        //     if (!trace) {
+                        //         trace = {
+                        //             x: [],
+                        //             y: [],
+                        //             type: 'bar',
+                        //             name: 'Class ' + count.class + ' ' + count.direction
+                        //         };
+                        //         graphData.push(trace);
+                        //     }
+
+                        //     // Add the data for this count to the trace
+                        //     trace.x.push(count.line);
+                        //     trace.y.push(count.count);
+                        // });
+
+                        // // Create the layout for the Plotly graph
+                        // var layout = {
+                        //     title: 'Counts by Line',
+                        //     xaxis: {
+                        //         title: 'Line'
+                        //     },
+                        //     yaxis: {
+                        //         title: 'Count'
+                        //     },
+                        //     barmode: 'group'
+                        // };
+
+                        // // Create the Plotly graph
+                        // Plotly.newPlot('counts-graph', graphData, layout, {
+                        //     toImageButtonOptions: {
+                        //         filename: video_name + '_counts_by_line',
+                        //         height: null,
+                        //         width: null,
+                        //         format: 'png'
+                        //     }
+                        // });
+
+
+                        // var video_name = msg.filename.split('.')[0]
+
+
 
                         // Get the table body element
                         var tableBody = document.getElementById('counts-display').querySelector('tbody');
@@ -843,6 +868,8 @@
                         $('#download-lines-button').show();  // Show the "Download Line Crossings" button
                         $('#download-counts-button').show();  // Show the "Download Counts Output" button
                         $('#download-processed-video-button').show();  // Show the "Download Processed Video" button
+                        $('#download-plots-button').show();  // Show the "Download Processed Video" button
+
                     })
                     .catch(error => {
                         console.error('Error fetching counts data:', error);
@@ -860,54 +887,68 @@
                 })
                     .then(response => response.json())
                     .then(data => {
-                        console.log('Crossings data:', data);
-                        // var video_name = msg.filename.split('.')[0]
+                        // console.log('Crossings data:', data);
+                        // // var video_name = msg.filename.split('.')[0]
 
-                        if (typeof data === 'string') {
-                            data = JSON.parse(data);
-                        }
-                        // Transform data into Plotly format
-                        let transformedData = data.reduce((acc, d) => {
-                            // Create a unique key for each combination
-                            const key = `${d.line_num}_${d.class_name}_${d.direction}`;
-                            if (!acc[key]) {
-                                acc[key] = {
-                                    x: [],
-                                    y: [],
-                                    name: `Line ${d.line_num} ${d.class_name} (${d.direction})`,
-                                    type: 'bar'
-                                };
-                            }
-                            acc[key].x.push(d.time); // Ensure this is a date string or a Date object
-                            acc[key].y.push(d.count); // The count value
-                            return acc;
-                        }, {});
+                        // if (typeof data === 'string') {
+                        //     var fig = JSON.parse(data.fig_json);
+                        // }
+                        var fig = JSON.parse(data.plot);
 
-                        // Create traces from the transformed data
-                        let plotData = Object.values(transformedData);
 
-                        // Configure the layout
-                        let layout = {
-                            barmode: 'group', // or 'stack' if you want stacked bars
-                            title: 'Counts per 15 min',
-                            xaxis: {
-                                title: 'Time',
-                                tickangle: -45
-                            },
-                            yaxis: {
-                                title: 'Count'
-                            },
-                            margin: { b: 150 } // Adjust the bottom margin to prevent labels from being cut off
-                        };
+                        // // Transform data into Plotly format
+                        // let transformedData = data.reduce((acc, d) => {
+                        //     // Create a unique key for each combination
+                        //     const key = `${d.line_num}_${d.class_name}_${d.direction}`;
+                        //     if (!acc[key]) {
+                        //         acc[key] = {
+                        //             x: [],
+                        //             y: [],
+                        //             name: `Line ${d.line_num} ${d.class_name} (${d.direction})`,
+                        //             type: 'bar'
+                        //         };
+                        //     }
+                        //     acc[key].x.push(d.time); // Ensure this is a date string or a Date object
+                        //     acc[key].y.push(d.count); // The count value
+                        //     return acc;
+                        // }, {});
 
-                        // Render the Plotly plot
-                        Plotly.newPlot('crossings-plot', plotData, layout, {
+                        // // Create traces from the transformed data
+                        // let plotData = Object.values(transformedData);
+
+                        // // Configure the layout
+                        // let layout = {
+                        //     barmode: 'group', // or 'stack' if you want stacked bars
+                        //     title: 'Counts per 15 min',
+                        //     xaxis: {
+                        //         title: 'Time',
+                        //         tickangle: -45
+                        //     },
+                        //     yaxis: {
+                        //         title: 'Count'
+                        //     },
+                        //     margin: { b: 150 } // Adjust the bottom margin to prevent labels from being cut off
+                        // };
+
+                        // // Render the Plotly plot
+                        // Plotly.newPlot('crossings-plot', plotData, layout, {
+                        //     toImageButtonOptions: {
+                        //         filename: video_name + '_counts_per_hour',
+                        //         height: null,
+                        //         width: null,
+                        //         format: 'png'
+                        //     }});
+
+                        // Use Plotly to render the graph
+                        Plotly.newPlot('crossings-plot', fig.data, fig.layout, {
                             toImageButtonOptions: {
                                 filename: video_name + '_counts_per_hour',
                                 height: null,
                                 width: null,
                                 format: 'png'
-                            }});
+                            }
+                        });
+
                     });
 
                 fetch('/get_tracks', {

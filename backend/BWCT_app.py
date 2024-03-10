@@ -27,6 +27,8 @@ from scipy.interpolate import splprep, splev
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
+import re
+
 import cv2 as cv
 
 from watchdog.observers import Observer
@@ -498,6 +500,7 @@ def reprocess_video(filename):
 
 @app.route('/counts', methods=['GET'])
 def get_counts():
+    global counts_fig
     filename = os.path.split(file_paths[0])[1]
     # Construct the path to the counts file
     video_name = filename.split('.')[0]
@@ -518,8 +521,76 @@ def get_counts():
             with open(counts_file_path, 'r') as f:
                 counts_data = f.read()
             
-            # Return the counts data as a JSON response
-            return jsonify({'counts': str(counts_data), 'filename': str(video_name)})
+            # Assuming data is a dictionary with 'counts' and 'filename' keys
+            counts_string = counts_data
+            lines = counts_string.strip().split('\n\n')
+            counts_data = []
+            current_line = 0
+            avg_fps = None
+
+            for line in lines:
+                parts = line.split('\n')
+                line_name = parts[0]
+                print('Line:', line_name)
+                print('Parts:', parts)
+
+                for part in parts:
+                    print('Part:', part)
+                    class_parts = re.split(r'[\s,]+', part)  # This splits on whitespace, which should work similarly to the regex used in JS
+                    print('Class parts:', class_parts)
+                    if class_parts[0] == 'line':
+                        current_line = class_parts[1]
+                    elif class_parts[0] == 'Average' and class_parts[1] == 'FPS:':
+                        avg_fps = class_parts[2]
+                    else:
+                        class_data = class_parts[0].split('_')
+                        counts_data.append({
+                            'line': f'Line {current_line}',
+                            'class': class_data[0],
+                            'direction': class_data[1],
+                            'count': class_parts[1]
+                        })
+
+            # Creating the data for the Plotly graph
+            graph_data = []
+
+            for count in counts_data:
+                trace_name = f'Class {count["class"]} {count["direction"]}'
+                trace = next((trace for trace in graph_data if trace['name'] == trace_name), None)
+                if not trace:
+                    trace = {
+                        'x': [],
+                        'y': [],
+                        'type': 'bar',
+                        'name': trace_name
+                    }
+                    # trace['x'].append(count['line'])
+                    # trace['y'].append(count['count'])
+                    graph_data.append(trace)
+                
+                trace['x'].append(count['line'])
+                trace['y'].append(int(count['count']))
+                print(trace)
+
+            # Creating the layout for the Plotly graph
+            layout = {
+                'title': 'Counts by Line',
+                'xaxis': {'title': 'Line'},
+                'yaxis': {'title': 'Count'},
+                'barmode': 'group'
+            }
+            print(f"graph data: {graph_data}")
+            # Creating the Plotly graph
+            counts_fig = go.Figure(data=[go.Bar(name=trace['name'], x=trace['x'], y=trace['y']) for trace in graph_data], layout=layout)
+            counts_fig.update_layout(title='Counts by Line', xaxis_title='Line', yaxis_title='Count', barmode='group')
+
+            # Return the plot as a json
+            fig_json = counts_fig.to_json()
+
+            return jsonify({'plot': fig_json, 'countsData': counts_data, 'filename': str(video_name)})
+
+            # # Return the counts data as a JSON response
+            # return jsonify({'counts': str(counts_data), 'filename': str(video_name)})
         else:
             return jsonify({'message': 'Counts file not found in the most recent run'}),  404
     else:
@@ -527,6 +598,7 @@ def get_counts():
 
 @app.route('/get_crossings_data', methods=['POST'])
 def get_crossings_data():
+    global crossings_fig
     filename = os.path.split(file_paths[0])[1]
     # Construct the path to the counts file
     video_name = filename.split('.')[0]
@@ -560,9 +632,56 @@ def get_crossings_data():
         hourly_counts.drop(columns=['timestamp'], inplace=True)
 
         # Convert to JSON or a suitable format for the frontend
-        plotly_data = hourly_counts.to_json(orient='records', date_format='iso')
+        # plotly_data = hourly_counts.to_json(orient='records', date_format='iso')
+
+
+        # Transform data into Plotly format
+        transformed_data = {}
+        for d in hourly_counts.to_dict('records'):
+            # Create a unique key for each combination
+            key = f"{d['line_num']}_{d['class_name']}_{d['direction']}"
+            if key not in transformed_data:
+                transformed_data[key] = {
+                    'x': [],
+                    'y': [],
+                    'name': f"Line {d['line_num']} {d['class_name']} ({d['direction']})",
+                    'type': 'bar'
+                }
+            # Assuming d['time'] is already a date string or a Date object compatible with Plotly
+            transformed_data[key]['x'].append(d['time'].isoformat())  # Convert time to string if not already
+            transformed_data[key]['y'].append(d['count'])
+
+        # Create traces from the transformed data
+        plot_data = list(transformed_data.values())
+
+        # Configure the layout
+        layout = {
+            'barmode': 'group',  # or 'stack' for stacked bars
+            'title': 'Counts per 15 min',
+            'xaxis': {
+                'title': 'Time',
+                'tickangle': -45
+            },
+            'yaxis': {
+                'title': 'Count'
+            },
+            'margin': {'b': 150}  # Adjust the bottom margin to prevent labels from being cut off
+        }
+
+        # Render the Plotly plot
+        crossings_fig = go.Figure(data=plot_data, layout=layout)
+        crossings_fig.update_layout(
+            barmode='group',
+            title='Counts per 15 min',
+            xaxis=dict(title='Time', tickangle=-45),
+            yaxis=dict(title='Count'),
+            margin=dict(b=150)
+        )
         
-        return jsonify(plotly_data)
+        fig_json = crossings_fig.to_json()
+
+        # return jsonify(plotly_data)
+        return jsonify({'plot': fig_json, 'filename': str(video_name)})
 
     else:
         return jsonify({'message': 'No runs found for the video'}),  404
@@ -702,6 +821,7 @@ def add_line_with_annotations(fig, line, line_index):
 
 @app.route('/get_tracks', methods=['POST'])
 def get_track_data_plot():
+    global track_fig
     filename = os.path.split(file_paths[0])[1]
     video_path = file_paths[0]
     # Construct the path to the counts file
@@ -736,7 +856,7 @@ def get_track_data_plot():
             kernel = np.ones(kernel_size) / kernel_size
 
             # Create subplots
-            fig = make_subplots(rows=1, cols=1, subplot_titles=("10 frame smoothing"))
+            track_fig = make_subplots(rows=1, cols=1, subplot_titles=("10 frame smoothing"))
 
             for track_id in tracks.keys():
                 trace = tracks[track_id]
@@ -792,7 +912,7 @@ def get_track_data_plot():
                     #     ))
 
                     # Add smoothed path
-                    fig.add_trace(go.Scatter(x=trace_convolved_x, y=trace_convolved_y, mode='lines', name=f'Trace {track_id} smoothed'), row=1, col=1)
+                    track_fig.add_trace(go.Scatter(x=trace_convolved_x, y=trace_convolved_y, mode='lines', name=f'Trace {track_id} smoothed'), row=1, col=1)
                     # Add an arrow annotation to the end of each trace
                     # if len(trace_convolved_x) > 10:
                     #     fig.add_annotation(
@@ -810,15 +930,15 @@ def get_track_data_plot():
                     #         arrowcolor='red'
                     #     )
             # Update xaxis and yaxis properties for each subplot
-            fig.update_xaxes(title_text="X", range=[0, resolution[0]], row=1, col=1)
-            fig.update_yaxes(title_text="Y", range=[resolution[1], 0], row=1, col=1)
+            track_fig.update_xaxes(title_text="X", range=[0, resolution[0]], row=1, col=1)
+            track_fig.update_yaxes(title_text="Y", range=[resolution[1], 0], row=1, col=1)
 
             # aspect ratio of image
             # aspect_ratio = resolution[0]/resolution[1]
             # plot_width = 800
             # plot_height = int(plot_width / aspect_ratio)
             # Set a background image
-            fig.update_layout(
+            track_fig.update_layout(
                 images=[
                     dict(
                         source=saved_frame,
@@ -837,21 +957,57 @@ def get_track_data_plot():
 
             # Add lines and annotations
             for i,line in enumerate(count_lines):
-                add_line_with_annotations(fig, line, i)
+                add_line_with_annotations(track_fig, line, i)
 
             # Set the layout of the figure
-            fig.update_layout(title="Lines with Arrows and Labels",
+            track_fig.update_layout(title="Lines with Arrows and Labels",
                             xaxis=dict(showgrid=True), yaxis=dict(showgrid=True))
 
             # Update layout if needed
-            fig.update_layout(height=resolution[1], width=resolution[0], title_text="Path Analysis", title_x=0.5)
+            track_fig.update_layout(height=resolution[1], width=resolution[0], title_text="Path Analysis", title_x=0.5)
 
-            fig_json = fig.to_json()
-            return jsonify(fig_json=fig_json)
+            fig_json = track_fig.to_json()
+            return jsonify({'fig_json': fig_json, 'filename': video_name})
         else:
             return jsonify({'message': 'No tracks found for this video'}), 404
     else:
         return jsonify({'message': 'No runs found for the video'}),  404
+
+@app.route('/get_plots')
+def get_plots():
+    global track_fig, counts_fig, crossings_fig
+    filename = os.path.split(file_paths[0])[1]
+    video_path = file_paths[0]
+    # Construct the path to the counts file
+    video_name = filename.split('.')[0]
+    base_path = os.path.join('backend/static/outputs', video_name)
+    print(base_path)
+    run_folders = glob.glob(os.path.join(base_path, 'run_*'))
+    # Sort the folders by creation time and get the most recent one
+    run_folders.sort(key=os.path.getctime, reverse=True)
+    most_recent_run = run_folders[0] if run_folders else None
+    # Check if there is a most recent run folder
+    if most_recent_run:
+        # Read the tracks.txt file and parse the data
+        plots_dir_path = os.path.join(most_recent_run, f'{video_name}_plots')
+        if not os.path.exists(plots_dir_path):
+            os.mkdir(plots_dir_path)
+        tracks_image_path = os.path.join(plots_dir_path, f'{video_name}_tracks_overlay.png')
+        counts_image_path = os.path.join(plots_dir_path, f'{video_name}_counts.png')
+        crossings_image_path = os.path.join(plots_dir_path, f'{video_name}_15_min.png')
+        try:
+            track_fig.write_image(tracks_image_path)
+            counts_fig.write_image(counts_image_path)
+            crossings_fig.write_image(crossings_image_path)
+        except Exception as err:
+            print("no figures found")
+            print(f"Error: {err}")
+            return "Figures not found in the most recent run", 404
+        return plots_dir_path
+    else:
+        return "No runs found for the video", 404
+
+
 
 def shutdown_handler():
     """Handle shutdown. Delete coordinates file"""
