@@ -320,17 +320,13 @@ app.on('ready', () => {
     setTimeout(() => {
         powerMonitor.emit('suspend');
     }, 180000); // 180000 milliseconds = 3 minutes
-    app.on('ready', () => {
-        createWindow();
+    powerMonitor.on('suspend', () => {
+        console.log('The system is going to sleep');
+    });
 
-        powerMonitor.on('suspend', () => {
-            console.log('The system is going to sleep');
-        });
-
-        powerMonitor.on('resume', () => {
-            console.log('The system has resumed from sleep');
-            checkBackendConnectionAndReconnect();
-        });
+    powerMonitor.on('resume', () => {
+        console.log('The system has resumed from sleep');
+        checkBackendConnectionAndReconnect();
     });
 });
 
