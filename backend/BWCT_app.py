@@ -329,7 +329,14 @@ def process():
         return jsonify({'message': 'Video processing started'}), 200
     return jsonify({'message': 'No video file provided'}), 400
 
+def save_processing_status(filename, status):
+    status_file_path = os.path.join('backend/static/processing_status', f'{filename}_status.json')
+    os.makedirs(os.path.dirname(status_file_path), exist_ok=True)
+    with open(status_file_path, 'w') as status_file:
+        json.dump({'status': status}, status_file)
+
 def process_video(filename, save_video):
+    save_processing_status(filename, 'processing')
     # Call your track.py script here
     print("Start processing video")
     tracker_base_path = "backend/Impr-Assoc-counter_demo"
@@ -411,8 +418,20 @@ def process_video(filename, save_video):
         #     print(f"Error: {stderr}")
         # After the subprocess has finished and the progress file has been deleted
         socketio.emit('video_processed', {'filename': filename})   
+        save_processing_status(filename, 'finished')
     except Exception as e:
         print(f"Error: {e}")
+        save_processing_status(filename, 'error')
+
+@app.route('/processing_status/<filename>')
+def processing_status(filename):
+    status_file_path = os.path.join('backend/static/processing_status', f'{filename}_status.json')
+    if os.path.exists(status_file_path):
+        with open(status_file_path, 'r') as status_file:
+            status_data = json.load(status_file)
+            return jsonify(status_data)
+    else:
+        return jsonify({'status': 'unknown'})
     
 @app.route('/reprocess', methods=['POST'])
 def reprocess():
