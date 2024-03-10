@@ -591,6 +591,8 @@
                                 $('#canvas').css("top", yOffset).attr({ width: this.clientWidth, height: canvasHeight }).css('pointer-events', 'none').show();
                             }).show();
 
+                            $('#reprocess-button').prop('disabled', true)
+
                             $('#download-counts-link').attr('href', '/download_counts');
                             $('#download-processed-video-link').attr('href', '/download_processed_video');
                         },
@@ -909,6 +911,8 @@
                     }
 
                     $('#process-button').prop('disabled', true)
+                    $('#reprocess-button').prop('disabled', true)
+
                     processing = true
                     $('#processing-progress').css('width', 0 + '%').attr('aria-valuenow', 0);
                     // var formData = new FormData(document.getElementById('upload-form'));
@@ -1014,6 +1018,8 @@
                 $('#processing-loader').hide()
                 processing = false
                 $('#process-button').prop('disabled', false);
+                $('#reprocess-button').prop('disabled', false);
+
 
 
 
