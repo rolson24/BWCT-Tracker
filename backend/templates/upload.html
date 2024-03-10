@@ -249,6 +249,43 @@
             ctx.stroke();
         }
 
+        // Function to save the counts data to local storage
+        function saveCountsDataToLocalStorage(countsData) {
+            localStorage.setItem('countsData', JSON.stringify(countsData));
+        }
+
+        // Function to load the counts data from local storage
+        function loadCountsDataFromLocalStorage() {
+            var countsData = JSON.parse(localStorage.getItem('countsData'));
+            return countsData;
+        }
+
+        // Function to render the counts data into the table
+        function renderCountsTable(countsData) {
+            var tableBody = document.getElementById('counts-display').querySelector('tbody');
+            tableBody.innerHTML = ''; // Clear the table body
+            if (countsData) {
+                countsData.forEach(function(count) {
+                    var row = document.createElement('tr');
+                    var lineCell = document.createElement('td');
+                    var classCell = document.createElement('td');
+                    var directionCell = document.createElement('td');
+                    var countCell = document.createElement('td');
+
+                    lineCell.textContent = count.line;
+                    classCell.textContent = count.class;
+                    directionCell.textContent = count.direction;
+                    countCell.textContent = count.count;
+
+                    row.appendChild(lineCell);
+                    row.appendChild(classCell);
+                    row.appendChild(directionCell);
+                    row.appendChild(countCell);
+                    tableBody.appendChild(row);
+                });
+            }
+        }
+
         // Function to save the plot data to local storage
         function savePlotDataToLocalStorage(plotData, plotName) {
             localStorage.setItem(plotName, JSON.stringify(plotData));
@@ -312,6 +349,8 @@
         $(document).ready(function () {
             // Load state and plot data from local storage
             loadStateFromLocalStorage();
+            var countsData = loadCountsDataFromLocalStorage();
+            renderCountsTable(countsData);
             var countsPlotData = loadPlotDataFromLocalStorage('countsPlotData');
             renderPlot(countsPlotData, 'counts-plot', 'counts_by_line');
             var crossingsPlotData = loadPlotDataFromLocalStorage('crossingsPlotData');
@@ -811,6 +850,7 @@
                         // Use Plotly to render the graph
                         var countsPlotData = { data: fig.data, layout: fig.layout };
                         renderPlot(countsPlotData, 'counts-plot', video_name + '_counts_by_line');
+                        saveCountsDataToLocalStorage(countsData); // Save the counts data to local storage
                         savePlotDataToLocalStorage(countsPlotData, 'countsPlotData');
                         //     toImageButtonOptions: {
                         //         filename: video_name + '_tracks_overlay',
