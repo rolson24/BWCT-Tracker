@@ -24,6 +24,27 @@ function createWindow() {
     });
 }
 
+function checkBackendConnectionAndReconnect() {
+    // Example: Attempt to fetch a simple endpoint from your backend
+    fetch('http://localhost:5000/health')
+        .then(response => {
+            if (response.ok) {
+                console.log('Backend connection is healthy.');
+                // Reload your Electron app's renderer process, if necessary
+                mainWindow.reload();
+            } else {
+                console.log('Backend connection failed. Trying again...');
+                // Retry connection after a delay
+                setTimeout(checkBackendConnectionAndReconnect, 5000); // Retry after 5 seconds
+            }
+        })
+        .catch(error => {
+            console.log('Error connecting to backend:', error);
+            // Retry connection after a delay
+            setTimeout(checkBackendConnectionAndReconnect, 5000); // Retry after 5 seconds
+        });
+}
+
 async function getCountsFilePath() {
     try {
         const fetch = (await import('node-fetch')).default; // Use dynamic import for node-fetch

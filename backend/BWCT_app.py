@@ -536,20 +536,6 @@ def get_counts():
             current_line = 0
             avg_fps = None
 
-            # ... existing code ...
-
-            # Return the plot as a json
-            fig_json = counts_fig.to_json()
-
-            # Save the plot data to a file
-            plot_filename = f"{video_name}_counts_plot_{uuid.uuid4()}.json"
-            plot_filepath = os.path.join('backend/static/plots', plot_filename)
-            with open(plot_filepath, 'w') as plot_file:
-                plot_file.write(fig_json)
-
-            return jsonify({'plot': fig_json, 'countsData': counts_data, 'filename': str(video_name)})
-
-            # ... existing code ...
             for line in lines:
                 parts = line.split('\n')
                 line_name = parts[0]

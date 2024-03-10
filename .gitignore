@@ -26,3 +26,5 @@ backend/line_crossings.txt
 backend/track_logs.txt
 progress.txt
 track_logs.txt
+.aider*
+cache*
