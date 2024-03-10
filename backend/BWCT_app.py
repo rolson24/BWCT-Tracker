@@ -91,8 +91,8 @@ def upload():
         return render_template('upload.html')  # replace 'index.html' with your actual template
     
 @app.route('/health')
-def health():
-    return 200
+def health_check():
+    return "OK", 200
 
 @app.route('/receive-file-paths', methods=['POST'])
 def receive_file_paths():
@@ -1025,4 +1025,9 @@ def shutdown_handler():
 if __name__ == '__main__':
     print("start webapp")
     atexit.register(shutdown_handler)
-    app.run(debug=False, port=5000)
+    try:
+        app.run(debug=False, port=5000)
+    except KeyboardInterrupt:
+        shutdown_handler()
+    finally:
+        print("Flask server has shut down.")
