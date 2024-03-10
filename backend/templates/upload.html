@@ -338,11 +338,12 @@
             var state = {
                 drawing: drawing,
                 processing: processing,
-                lineStart: lineStart,
+                // lineStart: lineStart,
                 videoPath: $('#video-player').attr('src'),
                 saveVideoOption: $('#save-video').val(),
                 // Add other state variables you need to save here
             };
+            console.log(`video src saved: ${state.videoPath}`)
             localStorage.setItem('appState', JSON.stringify(state));
         }
 
@@ -352,20 +353,20 @@
             if (state) {
                 drawing = state.drawing;
                 processing = state.processing;
-                lineStart = state.lineStart;
+                // lineStart = state.lineStart;
                 $('#video-player').attr('src', state.videoPath);
                 $('#save-video').val(state.saveVideoOption);
                 // Restore other parts of the state here
                 // Update the UI to reflect the restored state
+                console.log(`video src loaded: ${state.videoPath}`)
+
             }
+
         }
 
-        // Call loadStateFromLocalStorage when the page loads
-
-
-
-
-
+        function beforeUnloadListener(event) {
+            event.returnValue = 'Are you sure you want to leave?';
+        }
 
         // Save the state to local storage when the page is unloaded
         window.addEventListener('beforeunload', function (e) {
@@ -377,11 +378,13 @@
             // Rest of the beforeunload event...
         });
 
+        window.addEventListener('beforeunload', beforeUnloadListener);
+
         // Function to reload the video player with the current video source
         function reloadVideoPlayer() {
             var videoPlayer = document.getElementById('video-player');
             if (videoPlayer) {
-                var currentSrc = videoPlayer.currentSrc;
+                var currentSrc = videoPlayer.getAttribute('src');
                 videoPlayer.src = ''; // Reset the source to force reload
                 videoPlayer.load(); // Load the video player without source to clear previous state
                 videoPlayer.src = currentSrc; // Set the source back to the original path

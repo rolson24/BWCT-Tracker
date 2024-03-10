@@ -322,8 +322,8 @@ app.on('ready', () => {
         // Simulate the computer waking up after 3 more minutes
         setTimeout(() => {
             powerMonitor.emit('resume');
-        }, 180000); // 180000 milliseconds = 3 minutes
-    }, 180000); // 180000 milliseconds = 3 minutes
+        }, 120000); // 180000 milliseconds = 3 minutes
+    }, 120000); // 180000 milliseconds = 3 minutes
     powerMonitor.on('suspend', () => {
         console.log('The system is going to sleep');
     });
