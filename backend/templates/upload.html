@@ -17,7 +17,7 @@
 </head>
 
 <body>
-    
+
     <div class="container">
         <h1 class="text-center my-5">BWCT Video Analysis Tool</h1>
         <h2>Upload Video</h2>
@@ -231,7 +231,7 @@
     </style>
 
     <script>
-        
+
         function drawArrow(ctx, fromx, fromy, tox, toy, arrowWidth, color) {
             var headlen = 10; // length of head in pixels
             var dx = tox - fromx;
@@ -253,6 +253,45 @@
             e.preventDefault();
             // Chrome requires returnValue to be set
             e.returnValue = 'Are you sure you want to leave? You will lose your progress.';
+        });
+
+        // Function to save the current state to local storage
+        function saveStateToLocalStorage() {
+            var state = {
+                drawing: drawing,
+                processing: processing,
+                lineStart: lineStart,
+                videoPath: $('#video-player').attr('src'),
+                saveVideoOption: $('#save-video').val(),
+                // Add other state variables you need to save here
+            };
+            localStorage.setItem('appState', JSON.stringify(state));
+        }
+
+        // Function to load the state from local storage
+        function loadStateFromLocalStorage() {
+            var state = JSON.parse(localStorage.getItem('appState'));
+            if (state) {
+                drawing = state.drawing;
+                processing = state.processing;
+                lineStart = state.lineStart;
+                $('#video-player').attr('src', state.videoPath);
+                $('#save-video').val(state.saveVideoOption);
+                // Restore other parts of the state here
+                // Update the UI to reflect the restored state
+            }
+        }
+
+        // Call loadStateFromLocalStorage when the page loads
+        $(document).ready(function () {
+            loadStateFromLocalStorage();
+            // Rest of the ready function...
+        });
+
+        // Save the state to local storage when the page is unloaded
+        window.addEventListener('beforeunload', function (e) {
+            saveStateToLocalStorage();
+            // Rest of the beforeunload event...
         });
 
         $(document).ready(function () {
@@ -501,7 +540,7 @@
 
                             in_center_x = in_left + inLabelWidth/2;
                             in_center_y = in_top + labelHeight/2;
-                            
+
                             out_center_x = out_left + outLabelWidth/2;
                             out_center_y = out_top + labelHeight/2;
 
@@ -540,7 +579,7 @@
 
                             in_center_x = in_left + inLabelWidth/2;
                             in_center_y = in_top + labelHeight/2;
-                            
+
                             out_center_x = out_left + outLabelWidth/2;
                             out_center_y = out_top + labelHeight/2;
 
@@ -555,7 +594,7 @@
                             // out arrow
                             drawArrow(ctx, out_center_x, out_center_y - canvas_y_offset, out_center_x + arrow_x, out_center_y - canvas_y_offset + arrow_y, arrowWidth, 'DarkGreen');
 
-                            
+
                         } else {
                             // Line is drawn from top left to bottom right
                             console.log('Line is drawn from top left to bottom right');
@@ -580,7 +619,7 @@
 
                             in_center_x = in_left + inLabelWidth/2;
                             in_center_y = in_top + labelHeight/2;
-                            
+
                             out_center_x = out_left + outLabelWidth/2;
                             out_center_y = out_top + labelHeight/2;
 
