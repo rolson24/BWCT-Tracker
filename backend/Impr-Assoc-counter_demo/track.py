@@ -10,6 +10,7 @@ import numpy as np
 import torch
 import tensorflow as tf
 import json
+import os
 
 
 from YOLOv8_TensorRT import TRTModule  # isort:skip
@@ -214,6 +215,11 @@ def process_video(
 	 
 if __name__ == "__main__":
   args = make_parser().parse_args()
+
+  def save_processing_status(status):
+      status_file_path = os.path.join(THIS_RUN_FOLDER, "processing_status.json")
+      with open(status_file_path, 'w') as status_file:
+          json.dump({'status': status}, status_file)
 
   SOURCE_VIDEO_PATH = args.source_video_path
   SOURCE_VIDEO_NAME = osp.basename(SOURCE_VIDEO_PATH).split('.')[0]
@@ -671,6 +677,7 @@ if __name__ == "__main__":
   ''' Now process the whole video '''
   logger.info(f"saving results to {TRACK_OUTPUT_FILE_PATH}")
   logger.info(f"Save frames: {args.save_frames}")
+  save_processing_status('processing')
   process_video( 
     source_path = SOURCE_VIDEO_PATH, 
     target_path = TARGET_VIDEO_PATH_ANN,
@@ -682,6 +689,7 @@ if __name__ == "__main__":
 if args.color_calib_enable:
   out.release() 
  
+  save_processing_status('finished')
 
 ''' Save Counts ''' 
 with open(COUNT_OUTPUT_FILE_PATH, 'a+', newline='', encoding='UTF8') as f:
@@ -692,3 +700,6 @@ with open(COUNT_OUTPUT_FILE_PATH, 'a+', newline='', encoding='UTF8') as f:
       writer.writerow([key, val])
   writer.writerow([f"Average FPS: {total_fps/total_frames}"])
 
+except Exception as e:
+    logger.error(f"An error occurred during video processing: {e}")
+    save_processing_status('error')
