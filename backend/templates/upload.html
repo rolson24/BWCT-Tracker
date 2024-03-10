@@ -364,11 +364,7 @@
 
 
 
-        // Load the labels state when the page is ready
-        loadLabelsState();
 
-        // Load the canvas state when the page is ready
-        loadCanvasState();
 
 
         // Save the state to local storage when the page is unloaded
@@ -524,6 +520,12 @@
             var processing = false;
 
             $('#video-player, #canvas').hide();
+
+            // Load the labels state when the page is ready
+            loadLabelsState();
+
+            // Load the canvas state when the page is ready
+            loadCanvasState();
 
             $('.custom-file-input').on("change", function () {
                 var fileName = $(this).val().split("\\").pop();
