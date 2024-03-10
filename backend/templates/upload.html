@@ -894,6 +894,10 @@
                         labels["Out"].push(out_label);
                         labels["In"].push(in_label);
                         lineStart = null;
+                        label.hide().show(0);
+                        out_label.hide().show(0);
+                        in_label.hide().show(0);
+                        canvas.hide().show(0);
                     } else {
                         lineStart = { x: x, y: y };
                     }
