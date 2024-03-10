@@ -503,6 +503,8 @@ def reprocess_video(filename):
 
 
 @app.route('/counts', methods=['GET'])
+
+@app.route('/get_counts', methods=['GET'])
 def get_counts():
     global counts_fig
     filename = os.path.split(file_paths[0])[1]
@@ -518,6 +520,7 @@ def get_counts():
     if most_recent_run:
         # Construct the path to the counts file within the most recent run folder
         counts_file_path = os.path.join(most_recent_run, f'{video_name}_counts_output.txt')
+
         
         # Check if the counts file exists
         if os.path.exists(counts_file_path):
@@ -525,6 +528,7 @@ def get_counts():
             with open(counts_file_path, 'r') as f:
                 counts_data = f.read()
             
+
             # Assuming data is a dictionary with 'counts' and 'filename' keys
             counts_string = counts_data
             lines = counts_string.strip().split('\n\n')
@@ -532,6 +536,20 @@ def get_counts():
             current_line = 0
             avg_fps = None
 
+            # ... existing code ...
+
+            # Return the plot as a json
+            fig_json = counts_fig.to_json()
+
+            # Save the plot data to a file
+            plot_filename = f"{video_name}_counts_plot_{uuid.uuid4()}.json"
+            plot_filepath = os.path.join('backend/static/plots', plot_filename)
+            with open(plot_filepath, 'w') as plot_file:
+                plot_file.write(fig_json)
+
+            return jsonify({'plot': fig_json, 'countsData': counts_data, 'filename': str(video_name)})
+
+            # ... existing code ...
             for line in lines:
                 parts = line.split('\n')
                 line_name = parts[0]
