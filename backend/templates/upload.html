@@ -818,15 +818,15 @@
                         console.log(`plotly figure ${fig.data}`);
                         // Use Plotly to render the graph
                         var countsPlotData = { data: fig.data, layout: fig.layout };
-            renderPlot(countsPlotData, 'counts-plot', video_name + '_counts_by_line');
-            savePlotDataToLocalStorage(countsPlotData, 'countsPlotData');
-                            toImageButtonOptions: {
-                                filename: video_name + '_tracks_overlay',
-                                height: null,
-                                width: null,
-                                format: 'png'
-                            }
-                        });
+                        renderPlot(countsPlotData, 'counts-plot', video_name + '_counts_by_line');
+                        savePlotDataToLocalStorage(countsPlotData, 'countsPlotData');
+                        //     toImageButtonOptions: {
+                        //         filename: video_name + '_tracks_overlay',
+                        //         height: null,
+                        //         width: null,
+                        //         format: 'png'
+                        //     }
+                        // });
                         // lines.forEach(line => {
                         //     var parts = line.split('\n');
                         //     var lineName = parts[0];
@@ -1016,13 +1016,13 @@
                         var crossingsPlotData = { data: fig.data, layout: fig.layout };
                         renderPlot(crossingsPlotData, 'crossings-plot', video_name + '_counts_per_hour');
                         savePlotDataToLocalStorage(crossingsPlotData, 'crossingsPlotData');
-                            toImageButtonOptions: {
-                                filename: video_name + '_counts_per_hour',
-                                height: null,
-                                width: null,
-                                format: 'png'
-                            }
-                        });
+                        //     toImageButtonOptions: {
+                        //         filename: video_name + '_counts_per_hour',
+                        //         height: null,
+                        //         width: null,
+                        //         format: 'png'
+                        //     }
+                        // });
 
                     });
 
@@ -1042,13 +1042,13 @@
                         var trackPlotData = { data: fig.data, layout: fig.layout };
                         renderPlot(trackPlotData, 'track-plot', video_name + '_tracks_overlay');
                         savePlotDataToLocalStorage(trackPlotData, 'trackPlotData');
-                            toImageButtonOptions: {
-                                filename: video_name + '_tracks_overlay',
-                                height: null,
-                                width: null,
-                                format: 'png'
-                            }
-                        });
+                        //     toImageButtonOptions: {
+                        //         filename: video_name + '_tracks_overlay',
+                        //         height: null,
+                        //         width: null,
+                        //         format: 'png'
+                        //     }
+                        // });
                     })
                     .catch(error => console.error('Error fetching the Plotly graph:', error));
 
