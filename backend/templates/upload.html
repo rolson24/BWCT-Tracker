@@ -464,67 +464,6 @@
             }
         }
 
-        // Function to save the labels state to local storage
-        function saveLabelsState(labels) {
-            var labelsState = [];
-            var inLabelsState = [];
-            var outLabelsState = [];
-            for (var key in labels) {
-                if (labels.hasOwnProperty(key)) {
-                    if (key === "In" || key === "Out") {
-                        labels[key].forEach(function(label) {
-                            var labelData = {
-                                text: label.textContent,
-                                left: label.style.left,
-                                top: label.style.top,
-                                color: label.style.color
-                            };
-                            if (key === "In") {
-                                inLabelsState.push(labelData);
-                            } else {
-                                outLabelsState.push(labelData);
-                            }
-                        });
-                    } else {
-                        var label = labels[key];
-                        labelsState.push({
-                            text: label.textContent,
-                            left: label.style.left,
-                            top: label.style.top,
-                            color: label.style.color
-                        });
-                    }
-                }
-            }
-            localStorage.setItem('labelsState', JSON.stringify(labelsState));
-            localStorage.setItem('inLabelsState', JSON.stringify(inLabelsState));
-            localStorage.setItem('outLabelsState', JSON.stringify(outLabelsState));
-        }
-
-        // Function to load the labels state from local storage and recreate labels
-        function loadLabelsState() {
-            var labelsState = JSON.parse(localStorage.getItem('labelsState'));
-            var inLabelsState = JSON.parse(localStorage.getItem('inLabelsState'));
-            var outLabelsState = JSON.parse(localStorage.getItem('outLabelsState'));
-            var inLabelsState = JSON.parse(localStorage.getItem('inLabelsState'));
-            var outLabelsState = JSON.parse(localStorage.getItem('outLabelsState'));
-            if (labelsState) {
-                var videoContainer = document.querySelector('.video-container');
-                labelsState.forEach(function(labelState) {
-                    var label = document.createElement('span');
-                    label.textContent = labelState.text;
-                    label.style.position = 'absolute';
-                    label.style.left = labelState.left;
-                    label.style.top = labelState.top;
-                    label.style.color = labelState.color;
-                    label.style.fontSize = '15px';
-                    label.style.fontWeight = 'bold';
-                    label.style.pointerEvents = 'none';
-                    videoContainer.appendChild(label);
-                });
-            }
-        }
-
         // Function to save the canvas state to local storage
         function saveCanvasState() {
             var canvas = document.getElementById('canvas');
@@ -588,45 +527,45 @@
             var labelsState = JSON.parse(localStorage.getItem('labelsState'));
             var inLabelsState = JSON.parse(localStorage.getItem('inLabelsState'));
             var outLabelsState = JSON.parse(localStorage.getItem('outLabelsState'));
-            var inLabelsState = JSON.parse(localStorage.getItem('inLabelsState'));
-            var outLabelsState = JSON.parse(localStorage.getItem('outLabelsState'));
-            if (labelsState) {
-                var videoContainer = document.querySelector('.video-container');
+            if (labelsState) {                                                               
+                var videoContainer = document.querySelector('.video-container');             
                 labelsState.forEach(function(labelState) {
-                    var label = document.createElement('span');
-                    label.textContent = labelState.text;
-                    label.style.position = 'absolute';
-                    label.style.left = labelState.left;
-                    label.style.top = labelState.top;
-                    label.style.color = labelState.color;
-                    label.style.fontSize = '15px';
-                    label.style.fontWeight = 'bold';
-                    label.style.pointerEvents = 'none';
-                    videoContainer.appendChild(label);
+                createLabel(labelState, "Line")
                 });
-            }
+            }                                                                
+            if (inLabelsState) {                                                             
+                inLabelsState.forEach(function(labelState) {                                 
+                    createLabel(labelState, "In");                                           
+                });                                                                          
+            }                                                                                
+            if (outLabelsState) {                                                            
+                outLabelsState.forEach(function(labelState) {                                
+                    createLabel(labelState, "Out");                                          
+                });                                                                          
+            } 
         }
+        // Helper function to create a label                                                 
+        function createLabel(labelState, type) {                                             
+            var videoContainer = document.querySelector('.video-container');                 
+            var label = document.createElement('span');                                      
+            label.textContent = labelState.text;                                             
+            label.style.position = 'absolute';                                               
+            label.style.left = labelState.left;                                              
+            label.style.top = labelState.top;                                                
+            label.style.color = labelState.color;                                            
+            label.style.fontSize = '15px';                                                   
+            label.style.fontWeight = 'bold';                                                 
+            label.style.pointerEvents = 'none';                                              
+            videoContainer.appendChild(label);                                               
+            if (type === "In") {                                                             
+                labels["In"].push(label);                                                    
+            } else if (type === "Out") {                                                     
+                labels["Out"].push(label);                                                   
+            } else {                                                                         
+                labels[label.textContent] = label;                                           
+            }                                                                                
+        }       
 
-        // Function to save the canvas state to local storage
-        function saveCanvasState() {
-            var canvas = document.getElementById('canvas');
-            var canvasState = canvas.toDataURL(); // Save canvas drawing as data URL
-            localStorage.setItem('canvasState', canvasState);
-        }
-
-        // Function to load the canvas state from local storage
-        function loadCanvasState() {
-            var canvas = document.getElementById('canvas');
-            var ctx = canvas.getContext('2d');
-            var canvasState = localStorage.getItem('canvasState');
-            if (canvasState) {
-                var image = new Image();
-                image.onload = function() {
-                    ctx.drawImage(image, 0, 0); // Draw the saved image onto the canvas
-                };
-                image.src = canvasState;
-            }
-        }
 
         $(document).ready(function () {
             // Load state and plot data from local storage
@@ -1376,47 +1315,3 @@
     </script>
 
 </body>
-
-</html>
-        // Helper function to create a label
-        function createLabel(labelState, type) {
-            var videoContainer = document.querySelector('.video-container');
-            var label = document.createElement('span');
-            label.textContent = labelState.text;
-            label.style.position = 'absolute';
-            label.style.left = labelState.left;
-            label.style.top = labelState.top;
-            label.style.color = labelState.color;
-            label.style.fontSize = '15px';
-            label.style.fontWeight = 'bold';
-            label.style.pointerEvents = 'none';
-            videoContainer.appendChild(label);
-            if (type === "In") {
-                labels["In"].push(label);
-            } else if (type === "Out") {
-                labels["Out"].push(label);
-            } else {
-                labels[label.textContent] = label;
-            }
-        }
-        // Helper function to create a label
-        function createLabel(labelState, type) {
-            var videoContainer = document.querySelector('.video-container');
-            var label = document.createElement('span');
-            label.textContent = labelState.text;
-            label.style.position = 'absolute';
-            label.style.left = labelState.left;
-            label.style.top = labelState.top;
-            label.style.color = labelState.color;
-            label.style.fontSize = '15px';
-            label.style.fontWeight = 'bold';
-            label.style.pointerEvents = 'none';
-            videoContainer.appendChild(label);
-            if (type === "In") {
-                labels["In"].push(label);
-            } else if (type === "Out") {
-                labels["Out"].push(label);
-            } else {
-                labels[label.textContent] = label;
-            }
-        }
