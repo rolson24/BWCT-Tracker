@@ -346,6 +346,19 @@
             // Rest of the beforeunload event...
         });
 
+        // Function to reload the video player with the current video source
+        function reloadVideoPlayer() {
+            var videoPlayer = document.getElementById('video-player');
+            if (videoPlayer) {
+                var currentSrc = videoPlayer.currentSrc;
+                videoPlayer.src = ''; // Reset the source to force reload
+                videoPlayer.load(); // Load the video player without source to clear previous state
+                videoPlayer.src = currentSrc; // Set the source back to the original path
+                videoPlayer.load(); // Load the video player with the new source
+                videoPlayer.play(); // Play the video
+            }
+        }
+
         $(document).ready(function () {
             // Load state and plot data from local storage
             loadStateFromLocalStorage();
@@ -830,6 +843,9 @@
                 $('#processing-loader').hide()
                 processing = false
                 $('#process-button').prop('disabled', false);
+
+            // Reload the video player after processing is complete
+            reloadVideoPlayer();
 
 
                 // Make an AJAX request to get the counts data
