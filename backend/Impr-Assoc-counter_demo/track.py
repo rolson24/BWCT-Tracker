@@ -686,20 +686,17 @@ if __name__ == "__main__":
     codec="mp4v",
     save_video=args.save_frames
   )
-if args.color_calib_enable:
-  out.release() 
- 
+  if args.color_calib_enable:
+    out.release() 
+  
   save_processing_status('finished')
 
-''' Save Counts ''' 
-with open(COUNT_OUTPUT_FILE_PATH, 'a+', newline='', encoding='UTF8') as f:
-  writer = csv.writer(f)
-  for i, line_count in enumerate(line_counts):
-    writer.writerow([f"line {i}"])
-    for key, val in line_count.items():
-      writer.writerow([key, val])
-  writer.writerow([f"Average FPS: {total_fps/total_frames}"])
+  ''' Save Counts ''' 
+  with open(COUNT_OUTPUT_FILE_PATH, 'a+', newline='', encoding='UTF8') as f:
+    writer = csv.writer(f)
+    for i, line_count in enumerate(line_counts):
+      writer.writerow([f"line {i}"])
+      for key, val in line_count.items():
+        writer.writerow([key, val])
+    writer.writerow([f"Average FPS: {total_fps/total_frames}"])
 
-except Exception as e:
-    logger.error(f"An error occurred during video processing: {e}")
-    save_processing_status('error')
