@@ -229,6 +229,7 @@
     </style>
 
     <script>
+        
         function drawArrow(ctx, fromx, fromy, tox, toy, arrowWidth, color) {
             var headlen = 10; // length of head in pixels
             var dx = tox - fromx;
@@ -251,6 +252,7 @@
             // Chrome requires returnValue to be set
             e.returnValue = 'Are you sure you want to leave? You will lose your progress.';
         });
+
         $(document).ready(function () {
             var drawing = false;
             var lineStart = null;
@@ -677,25 +679,28 @@
                     });
             });
 
-            $('#download-counts-button').on('click', function () {
-                $('#download-counts-link')[0].click();
+
+            document.getElementById('download-counts-button').addEventListener('click', () => {
+                window.electronAPI.saveCountsFile();
             });
+
             $('#download-lines-button').on('click', function () {
-                $('#download-lines-link')[0].click();
+                window.electronAPI.saveLineCrossingsFile();
             });
+
             $('#download-processed-video-button').on('click', function () {
-                $('#download-processed-video-link')[0].click();
+                window.electronAPI.saveProcessedVideoFile();
+
             });
 
-            // document.addEventListener('DOMContentLoaded', function() {
-            // fetch('/get_crossings_data')
-            // .then(response => response.json())
-            // .then(data => {
-            //     // Use Plotly to create the bar graph with the data received
-            //     var plotData = []; // Transform 'data' into the required format for Plotly
-            //     var layout = { /* ... layout configuration ... */ };
-
-            //     Plotly.newPlot('crossings-plot', plotData, layout);
+            // $('#download-counts-button').on('click', function () {
+            //     $('#download-counts-link')[0].click();
+            // });
+            // $('#download-lines-button').on('click', function () {
+            //     $('#download-lines-link')[0].click();
+            // });
+            // $('#download-processed-video-button').on('click', function () {
+            //     $('#download-processed-video-link')[0].click();
             // });
 
 

@@ -146,35 +146,57 @@ def stream_video():
 
     return Response(generate(), mimetype='video/mp4')
 
+    
 @app.route('/download_counts')
 def download_counts():
-    filename = os.path.split(file_paths[0])[0]
-    # Construct the path to the counts file
-    video_name = filename.split('.')[0]
-    base_path = os.path.join('static/outputs', video_name)
+    if not file_paths:  # Check if file_paths is empty
+        return "No video file provided", 400
+    
+    filename = os.path.basename(file_paths[0])  # Get the filename
+    video_name = filename.split('.')[0]  # Extract video name without extension
+    base_path = os.path.join('backend/static/outputs', video_name)
     run_folders = glob.glob(os.path.join(base_path, 'run_*'))
-    # Sort the folders by creation time and get the most recent one
     run_folders.sort(key=os.path.getctime, reverse=True)
     most_recent_run = run_folders[0] if run_folders else None
-    # Check if there is a most recent run folder
+
     if most_recent_run:
-        # Construct the path to the counts file within the most recent run folder
         counts_file_path = os.path.join(most_recent_run, f'{video_name}_counts_output.txt')
-        # Check if the counts file exists
         if os.path.exists(counts_file_path):
             return send_file(counts_file_path, as_attachment=True)
         else:
             return "Counts file not found in the most recent run", 404
     else:
         return "No runs found for the video", 404
+    
+@app.route('/get_counts_file_path')
+def get_counts_file_path():
+    if not file_paths:  # Check if file_paths is empty
+        return "No video file provided", 400
+    
+    filename = os.path.basename(file_paths[0])  # Get the filename
+    video_name = filename.split('.')[0]  # Extract video name without extension
+    base_path = os.path.join('backend/static/outputs', video_name)
+    run_folders = glob.glob(os.path.join(base_path, 'run_*'))
+    run_folders.sort(key=os.path.getctime, reverse=True)
+    most_recent_run = run_folders[0] if run_folders else None
+
+    if most_recent_run:
+        counts_file_path = os.path.join(most_recent_run, f'{video_name}_counts_output.txt')
+        if os.path.exists(counts_file_path):
+            return counts_file_path
+        else:
+            return "Counts file not found in the most recent run", 404
+    else:
+        return "No runs found for the video", 404
+
 
 @app.route('/download_processed_video')
 def download_video():
-    filename = os.path.split(file_paths[0])[0]
+    filename = os.path.basename(file_paths[0])  # Get the filename
     # Construct the path to the counts file
     video_name = filename.split('.')[0]
     video_ext = filename.split('.')[1]
-    base_path = os.path.join('static/outputs', video_name)
+    base_path = os.path.join('backend/static/outputs', video_name)
     run_folders = glob.glob(os.path.join(base_path, 'run_*'))
     # Sort the folders by creation time and get the most recent one
     run_folders.sort(key=os.path.getctime, reverse=True)
@@ -191,10 +213,55 @@ def download_video():
     else:
         return "No runs found for the video", 404
 
+@app.route('/get_processed_video_file_path')
+def get_processed_video_file_path():
+    filename = os.path.basename(file_paths[0])  # Get the filename
+    # Construct the path to the counts file
+    video_name = filename.split('.')[0]
+    video_ext = filename.split('.')[1]
+    base_path = os.path.join('backend/static/outputs', video_name)
+    run_folders = glob.glob(os.path.join(base_path, 'run_*'))
+    # Sort the folders by creation time and get the most recent one
+    run_folders.sort(key=os.path.getctime, reverse=True)
+    most_recent_run = run_folders[0] if run_folders else None
+    # Check if there is a most recent run folder
+    if most_recent_run:
+        # Construct the path to the counts file within the most recent run folder
+        counts_file_path = os.path.join(most_recent_run, f'{video_name}_annotated.{video_ext}')
+        # Check if the counts file exists
+        if os.path.exists(counts_file_path):
+            return counts_file_path
+        else:
+            return "Counts file not found in the most recent run", 404
+    else:
+        return "No runs found for the video", 404
 
 @app.route('/download_lines')
 def download_lines():
     return send_file('line_crossings.txt', as_attachment=True)
+
+@app.route('/get_line_crossings_file_path')
+def get_line_crossings_file_path():
+    filename = os.path.basename(file_paths[0])  # Get the filename
+    # Construct the path to the counts file
+    video_name = filename.split('.')[0]
+    base_path = os.path.join('backend/static/outputs', video_name)
+    run_folders = glob.glob(os.path.join(base_path, 'run_*'))
+    # Sort the folders by creation time and get the most recent one
+    run_folders.sort(key=os.path.getctime, reverse=True)
+    most_recent_run = run_folders[0] if run_folders else None
+    # Check if there is a most recent run folder
+    if most_recent_run:
+        # Construct the path to the counts file within the most recent run folder
+        line_crossings_file_path = os.path.join(most_recent_run, f'{video_name}_line_crossings.txt')
+        # Check if the counts file exists
+        if os.path.exists(line_crossings_file_path):
+            return line_crossings_file_path
+        else:
+            return "Line crossings file not found in the most recent run", 404
+    else:
+        return "No runs found for the video", 404
+    
 
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
@@ -565,6 +632,74 @@ def save_middle_video_frame(file_path, save_path):
         cap.release()
     return resolution
 
+def parse_count_lines_file(count_lines_file):
+  '''File format:
+  (x1,y1) (x2,y2)
+  (x1,y1) (x2,y2)'''
+  with open(count_lines_file, 'r') as f:
+    lines = f.readlines()
+  lines = [line.strip() for line in lines]
+  lines = [line.split(' ') for line in lines]
+  lines = [[eval(coord.replace('(', '').replace(')', '')) for coord in line] for line in lines]
+  return lines
+
+# Function to determine the direction and positioning of the arrow based on the line
+def add_line_with_annotations(fig, line, line_index):
+    start_x, start_y = line[0]
+    end_x, end_y = line[1]
+    
+    # Calculate vector from start to end
+    vec_x = end_x - start_x
+    vec_y = end_y - start_y
+
+    # Normalize the vector
+    norm = (vec_x ** 2 + vec_y ** 2) ** 0.5
+    unit_vec_x = vec_x / norm
+    unit_vec_y = vec_y / norm
+
+    mid_x = (start_x + end_x) / 2
+    mid_y = (start_y + end_y) / 2
+
+    # Parameters for arrow size
+    arrow_length = 50  # Length of the arrow
+
+    # Compute arrow vectors (opposite direction for "In")
+    arrow_vec_x_in = unit_vec_y * arrow_length
+    arrow_vec_y_in = -unit_vec_x * arrow_length
+
+    arrow_vec_x_out = -unit_vec_y * arrow_length
+    arrow_vec_y_out = unit_vec_x * arrow_length
+
+    # Define offsets for "In" and "Out" labels based on the line vector
+    offset_distance = 25  # Distance from the line to place labels
+    offset_x = unit_vec_y * offset_distance  # Perpendicular to line vector
+    offset_y = -unit_vec_x * offset_distance
+
+    label_offset_x = unit_vec_x * offset_distance
+    label_offset_y = unit_vec_y * offset_distance
+
+    # Add the line as a shape
+    fig.add_shape(type="line", x0=start_x, y0=start_y, x1=end_x, y1=end_y,
+                  line=dict(color="RoyalBlue", width=3))
+    
+    # Add "In" arrow annotation at the start
+    fig.add_annotation(x=mid_x - offset_x, y=mid_y - offset_y, ax=arrow_vec_x_in, ay=arrow_vec_y_in,
+                       text="In", showarrow=True, arrowhead=2, arrowsize=1, arrowwidth=2,
+                       arrowcolor="Blue", font=dict(size=15, color="Blue"))
+
+    # Add "Out" arrow annotation at the end
+    fig.add_annotation(x=mid_x + offset_x + label_offset_x, y=mid_y + offset_y + label_offset_y, ax=arrow_vec_x_out, ay=arrow_vec_y_out,
+                       text="Out", showarrow=True, arrowhead=2, arrowsize=1, arrowwidth=2,
+                       arrowcolor="DarkGreen", font=dict(size=15, color="DarkGreen"))
+
+    # Add a label for the line's name near its midpoint
+
+    fig.add_annotation(x=end_x, y=end_y,
+                       text=line_index, # or f"Line {line_index}" for a generic label
+                       showarrow=False, font=dict(size=15, color="Red"),
+                       bgcolor="white", bordercolor="Red", borderwidth=2, borderpad=4)
+
+
 @app.route('/get_tracks', methods=['POST'])
 def get_track_data_plot():
     filename = os.path.split(file_paths[0])[1]
@@ -582,6 +717,9 @@ def get_track_data_plot():
         run_name = os.path.basename(most_recent_run)
         # Read the tracks.txt file and parse the data
         tracks_file_path = os.path.join(most_recent_run, f'{video_name}_tracks_output.txt')
+        count_lines_file = "coordinates.txt"
+        if os.path.exists(count_lines_file):
+            count_lines = parse_count_lines_file(count_lines_file)
         if os.path.exists(tracks_file_path):
             # tracks is a dict from track_ids to their array of bboxes in order of frame
             tracks = get_tracks(tracks_file_path)
@@ -693,6 +831,17 @@ def get_track_data_plot():
                     )
                 ]
             )
+
+            start_ind = 0
+            end_ind = 1
+
+            # Add lines and annotations
+            for i,line in enumerate(count_lines):
+                add_line_with_annotations(fig, line, i)
+
+            # Set the layout of the figure
+            fig.update_layout(title="Lines with Arrows and Labels",
+                            xaxis=dict(showgrid=True), yaxis=dict(showgrid=True))
 
             # Update layout if needed
             fig.update_layout(height=resolution[1], width=resolution[0], title_text="Path Analysis", title_x=0.5)

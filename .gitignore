@@ -24,3 +24,5 @@ backend/static/*
 coordinates.txt
 backend/line_crossings.txt
 backend/track_logs.txt
+progress.txt
+track_logs.txt

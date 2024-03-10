@@ -18,5 +18,8 @@
   "homepage": "https://github.com/rolson24/BWCT-tracker/blob/ByteTrackOnWendellPCWorking/README.md",
   "devDependencies": {
     "electron": "^29.0.1"
+  },
+  "dependencies": {
+    "node-fetch": "^3.3.2"
   }
 }

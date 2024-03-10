@@ -1,8 +1,10 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const { spawn } = require('child_process');
 const path = require('path');
+const fetch = import('node-fetch');
 let mainWindow;
 let flaskProcess = null;
+const fs = require('fs');
 
 function createWindow() {
     mainWindow = new BrowserWindow({
@@ -19,6 +21,51 @@ function createWindow() {
     mainWindow.on('closed', () => {
         mainWindow = null;
     });
+}
+
+async function getCountsFilePath() {
+    try {
+        const fetch = (await import('node-fetch')).default; // Use dynamic import for node-fetch
+        const response = await fetch('http://localhost:5000/get_counts_file_path');
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        const countsFilePath = await response.text();
+        return countsFilePath;
+    } catch (error) {
+        console.error("Failed to get counts file path:", error);
+        return null;
+    }
+}
+
+async function getProcessedVideoFilePath() {
+    try {
+        const fetch = (await import('node-fetch')).default; // Use dynamic import for node-fetch
+        const response = await fetch('http://localhost:5000/get_processed_video_file_path');
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        const processedVideoFilePath = await response.text();
+        return processedVideoFilePath;
+    } catch (error) {
+        console.error("Failed to get processed video file path:", error);
+        return null;
+    }
+}
+
+async function getCrossingsFilePath() {
+    try {
+        const fetch = (await import('node-fetch')).default; // Use dynamic import for node-fetch
+        const response = await fetch('http://localhost:5000/get_line_crossings_file_path');
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        const crossingsFilePath = await response.text();
+        return crossingsFilePath;
+    } catch (error) {
+        console.error("Failed to get crossings file path:", error);
+        return null;
+    }
 }
 
 function startFlaskApp() {
@@ -43,6 +90,120 @@ function startFlaskApp() {
                 });
                 console.log(`initial filenames: ${filePaths}`)
                 return filePaths;
+            });
+
+
+            ipcMain.on('save-counts-file', async (event) => {
+                const countsFilePath = await getCountsFilePath();  // Retrieve the counts file path
+
+                if (!countsFilePath || countsFilePath.includes("No video file provided") || countsFilePath.includes("Counts file not found") || countsFilePath.includes("No runs found")) {
+                    console.error('Failed to get counts file path:', countsFilePath);
+                    event.sender.send('save-counts-file-response', 'failure');
+                    return;
+                }
+                const { canceled, filePath } = await dialog.showSaveDialog({
+                    title: 'Save Counts File',
+                    buttonLabel: 'Save',
+                    // Suggest a default file name if you like
+                    defaultPath: path.join(app.getPath('downloads'), 'counts_output.txt'),
+                    // Set filters to limit to specific file types (optional)
+                    filters: [
+                        { name: 'Text Files', extensions: ['txt'] },
+                    ]
+                });
+
+                if (canceled || !filePath) {
+                    // User cancelled the dialog or closed it without selecting a location
+                    return;
+                }
+
+                // Copy the file to the user-selected location
+                fs.copyFile(countsFilePath, filePath, (err) => {
+                    if (err) {
+                        console.error('Failed to save counts file:', err);
+                        event.sender.send('save-counts-file-response', 'failure');
+                    } else {
+                        console.log('Counts file saved successfully');
+                        event.sender.send('save-counts-file-response', 'success');
+                    }
+                });
+
+                
+            });
+
+            ipcMain.on('save-processed-video-file', async (event) => {
+                const videoFilePath = await getProcessedVideoFilePath();  // Retrieve the counts file path
+
+                if (!videoFilePath || videoFilePath.includes("No video file provided") || videoFilePath.includes("Video file not found") || videoFilePath.includes("No runs found")) {
+                    console.error('Failed to get video file path:', videoFilePath);
+                    event.sender.send('save-processed-video-file-response', 'failure');
+                    return;
+                }
+                const { canceled, filePath } = await dialog.showSaveDialog({
+                    title: 'Save Processed Video File',
+                    buttonLabel: 'Save',
+                    // Suggest a default file name if you like
+                    defaultPath: path.join(app.getPath('downloads'), 'processed_video.mp4'),
+                    filters: [
+                        { name: 'MP4 Video', extensions: ['mp4'] }
+                    ],
+                });
+
+                if (canceled || !filePath) {
+                    // User cancelled the dialog or closed it without selecting a location
+                    return;
+                }
+
+                // Copy the file to the user-selected location
+                fs.copyFile(videoFilePath, filePath, (err) => {
+                    if (err) {
+                        console.error('Failed to save processed video file:', err);
+                        event.sender.send('save-processed-video-file-response', 'failure');
+                    } else {
+                        console.log('Processed video file saved successfully');
+                        event.sender.send('save-processed-video-file-response', 'success');
+                    }
+                });
+
+                
+            });
+
+            ipcMain.on('save-line-crossings-file', async (event) => {
+                const crossingsFilePath = await getCrossingsFilePath();  // Retrieve the counts file path
+
+                if (!crossingsFilePath || crossingsFilePath.includes("No video file provided") || crossingsFilePath.includes("Counts file not found") || crossingsFilePath.includes("No runs found")) {
+                    console.error('Failed to get line crossings file path:', crossingsFilePath);
+                    event.sender.send('save-line-crossings-file-response', 'failure');
+                    return;
+                }
+                const { canceled, filePath } = await dialog.showSaveDialog({
+                    title: 'Save Line Crossings File',
+                    buttonLabel: 'Save',
+                    // Suggest a default file name if you like
+                    defaultPath: path.join(app.getPath('downloads'), 'line_crossings.txt'),
+                    // Set filters to limit to specific file types (optional)
+                    filters: [
+                        { name: 'Text Files', extensions: ['txt'] },
+                    ]
+                });
+
+                if (canceled || !filePath) {
+                    // User cancelled the dialog or closed it without selecting a location
+                    return;
+                }
+
+                // Copy the file to the user-selected location
+                fs.copyFile(crossingsFilePath, filePath, (err) => {
+                    if (err) {
+                        console.error('Failed to save line crossings file:', err);
+                        event.sender.send('save-line-crossings-file-response', 'failure');
+                    } else {
+                        console.log('Line crossings file saved successfully');
+                        event.sender.send('save-line-crossings-file-response', 'success');
+                    }
+                });
+
+                
             });
         }
     });
