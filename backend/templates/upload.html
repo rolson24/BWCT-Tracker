@@ -359,6 +359,15 @@
             }
         }
 
+        // Function to check if a video has been uploaded and reload the video player
+        function checkAndReloadVideoPlayer() {
+            var videoPlayer = document.getElementById('video-player');
+            // Check if the video player has a source and if it's not empty
+            if (videoPlayer && videoPlayer.getAttribute('src')) {
+                reloadVideoPlayer(); // Call the reloadVideoPlayer function if a source is present
+            }
+        }
+
         $(document).ready(function () {
             // Load state and plot data from local storage
             loadStateFromLocalStorage();
@@ -1100,6 +1109,9 @@
 
             });
 
+
+            // Call checkAndReloadVideoPlayer when the page is ready
+            checkAndReloadVideoPlayer();
         });
     </script>
 
