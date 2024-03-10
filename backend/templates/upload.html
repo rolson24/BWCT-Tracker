@@ -386,7 +386,7 @@
                 videoPlayer.load(); // Load the video player without source to clear previous state
                 videoPlayer.src = currentSrc; // Set the source back to the original path
                 videoPlayer.load(); // Load the video player with the new source
-                videoPlayer.play(); // Play the video
+                videoPlayer.show(); // Show the video player
             }
         }
 
@@ -520,6 +520,9 @@
             var processing = false;
 
             $('#video-player, #canvas').hide();
+
+            // Call checkAndReloadVideoPlayer when the page is ready
+            checkAndReloadVideoPlayer();
 
             // Load the labels state when the page is ready
             loadLabelsState();
@@ -1251,8 +1254,7 @@
             });
 
 
-            // Call checkAndReloadVideoPlayer when the page is ready
-            checkAndReloadVideoPlayer();
+
         });
     </script>
 
