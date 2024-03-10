@@ -255,6 +255,31 @@
             e.returnValue = 'Are you sure you want to leave? You will lose your progress.';
         });
 
+        // Function to save the plot data to local storage
+        function savePlotDataToLocalStorage(plotData, plotName) {
+            localStorage.setItem(plotName, JSON.stringify(plotData));
+        }
+
+        // Function to load the plot data from local storage
+        function loadPlotDataFromLocalStorage(plotName) {
+            var plotData = JSON.parse(localStorage.getItem(plotName));
+            return plotData;
+        }
+
+        // Function to render the plot using Plotly
+        function renderPlot(plotData, plotElementId, plotName) {
+            if (plotData) {
+                Plotly.newPlot(plotElementId, plotData.data, plotData.layout, {
+                    toImageButtonOptions: {
+                        filename: plotName,
+                        height: null,
+                        width: null,
+                        format: 'png'
+                    }
+                });
+            }
+        }
+
         // Function to save the current state to local storage
         function saveStateToLocalStorage() {
             var state = {
@@ -285,6 +310,13 @@
         // Call loadStateFromLocalStorage when the page loads
         $(document).ready(function () {
             loadStateFromLocalStorage();
+            // Load and render the stored plots
+            var countsPlotData = loadPlotDataFromLocalStorage('countsPlotData');
+            renderPlot(countsPlotData, 'counts-plot', 'counts_by_line');
+            var crossingsPlotData = loadPlotDataFromLocalStorage('crossingsPlotData');
+            renderPlot(crossingsPlotData, 'crossings-plot', 'counts_per_hour');
+            var trackPlotData = loadPlotDataFromLocalStorage('trackPlotData');
+            renderPlot(trackPlotData, 'track-plot', 'tracks_overlay');
             // Rest of the ready function...
         });
 
@@ -785,7 +817,9 @@
                         var fig = JSON.parse(data.plot);
                         console.log(`plotly figure ${fig.data}`);
                         // Use Plotly to render the graph
-                        Plotly.newPlot('counts-plot', fig.data, fig.layout, {
+                        var countsPlotData = { data: fig.data, layout: fig.layout };
+            renderPlot(countsPlotData, 'counts-plot', video_name + '_counts_by_line');
+            savePlotDataToLocalStorage(countsPlotData, 'countsPlotData');
                             toImageButtonOptions: {
                                 filename: video_name + '_tracks_overlay',
                                 height: null,
@@ -979,7 +1013,9 @@
                         //     }});
 
                         // Use Plotly to render the graph
-                        Plotly.newPlot('crossings-plot', fig.data, fig.layout, {
+                        var crossingsPlotData = { data: fig.data, layout: fig.layout };
+                        renderPlot(crossingsPlotData, 'crossings-plot', video_name + '_counts_per_hour');
+                        savePlotDataToLocalStorage(crossingsPlotData, 'crossingsPlotData');
                             toImageButtonOptions: {
                                 filename: video_name + '_counts_per_hour',
                                 height: null,
@@ -1003,7 +1039,9 @@
                         // var video_name = msg.filename.split('.')[0]
 
                         // Use Plotly to render the graph
-                        Plotly.newPlot('track-plot', fig.data, fig.layout, {
+                        var trackPlotData = { data: fig.data, layout: fig.layout };
+                        renderPlot(trackPlotData, 'track-plot', video_name + '_tracks_overlay');
+                        savePlotDataToLocalStorage(trackPlotData, 'trackPlotData');
                             toImageButtonOptions: {
                                 filename: video_name + '_tracks_overlay',
                                 height: null,
