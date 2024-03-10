@@ -2,7 +2,7 @@ const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const { spawn } = require('child_process');
 const { powerMonitor } = require('electron');
 const path = require('path');
-const fetch = import('node-fetch');
+const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 let mainWindow;
 let flaskProcess = null;
 const fs = require('fs');
@@ -27,7 +27,7 @@ function createWindow() {
 
 // Function to check if the backend is responsive and reload if necessary
 function checkBackendHealth() {
-    fetch('http://localhost:5000/health')
+    fetch.default('http://localhost:5000/health')
         .then(response => {
             if (!response.ok) {
                 // If the response is not ok, reload the window
@@ -47,7 +47,7 @@ setInterval(checkBackendHealth, 300000); // 300000 milliseconds = 5 minutes
 
 function checkBackendConnectionAndReconnect() {
     // Example: Attempt to fetch a simple endpoint from your backend
-    fetch('http://localhost:5000/health')
+    fetch.default('http://localhost:5000/health')
         .then(response => {
             if (response.ok) {
                 console.log('Backend connection is healthy.');
@@ -68,7 +68,7 @@ function checkBackendConnectionAndReconnect() {
 
 async function getCountsFilePath() {
     try {
-        const fetch = (await import('node-fetch')).default; // Use dynamic import for node-fetch
+        // Removed the dynamic import as we've already imported node-fetch at the top
         const response = await fetch('http://localhost:5000/get_counts_file_path');
         if (!response.ok) {
             throw new Error('Network response was not ok');
@@ -83,7 +83,7 @@ async function getCountsFilePath() {
 
 async function getProcessedVideoFilePath() {
     try {
-        const fetch = (await import('node-fetch')).default; // Use dynamic import for node-fetch
+        // Removed the dynamic import as we've already imported node-fetch at the top
         const response = await fetch('http://localhost:5000/get_processed_video_file_path');
         if (!response.ok) {
             throw new Error('Network response was not ok');
@@ -98,7 +98,7 @@ async function getProcessedVideoFilePath() {
 
 async function getCrossingsFilePath() {
     try {
-        const fetch = (await import('node-fetch')).default; // Use dynamic import for node-fetch
+        // Removed the dynamic import as we've already imported node-fetch at the top
         const response = await fetch('http://localhost:5000/get_line_crossings_file_path');
         if (!response.ok) {
             throw new Error('Network response was not ok');
@@ -113,7 +113,7 @@ async function getCrossingsFilePath() {
 
 async function getPlots(){
     try {
-        const fetch = (await import('node-fetch')).default;
+        // Removed the dynamic import as we've already imported node-fetch at the top
         const response = await fetch('http://localhost:5000/get_plots');
         if (!response.ok) {
             throw new Error('Network response was not ok');
@@ -357,4 +357,3 @@ app.on('before-quit', (event) => {
 });
 
 // Remove the 'will-quit' event handler to simplify the quit process
-
