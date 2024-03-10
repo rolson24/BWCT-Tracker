@@ -331,20 +331,6 @@ app.on('ready', () => {
     powerMonitor.on('resume', () => {
         console.log('The system has resumed from sleep');
         checkBackendConnectionAndReconnect();
-        // Reload the video player with the current video source to ensure it plays after wake
-        if (mainWindow) {
-            mainWindow.webContents.executeJavaScript(`
-                var videoPlayer = document.getElementById('video-player');
-                if (videoPlayer) {
-                    var currentSrc = videoPlayer.currentSrc;
-                    videoPlayer.src = ''; // Reset the source to force reload
-                    videoPlayer.load(); // Load the video player without source to clear previous state
-                    videoPlayer.src = currentSrc; // Set the source back to the original path
-                    videoPlayer.load(); // Load the video player with the new source
-                    videoPlayer.play(); // Play the video
-                }
-            `).catch(err => console.error('Failed to execute JavaScript in the renderer process:', err));
-        }
     });
 });
 
