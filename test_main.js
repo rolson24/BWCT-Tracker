@@ -1,5 +1,6 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const { spawn } = require('child_process');
+const { powerMonitor } = require('electron');
 const path = require('path');
 const fetch = import('node-fetch');
 let mainWindow;
@@ -315,6 +316,18 @@ function startFlaskApp() {
 app.on('ready', () => {
     startFlaskApp();
     createWindow();
+    app.on('ready', () => {
+        createWindow();
+
+        powerMonitor.on('suspend', () => {
+            console.log('The system is going to sleep');
+        });
+
+        powerMonitor.on('resume', () => {
+            console.log('The system has resumed from sleep');
+            checkBackendConnectionAndReconnect();
+        });
+    });
 });
 
 app.on('window-all-closed', () => {
