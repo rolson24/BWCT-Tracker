@@ -252,23 +252,45 @@
         // Function to save the labels state to local storage
         function saveLabelsState(labels) {
             var labelsState = [];
+            var inLabelsState = [];
+            var outLabelsState = [];
             for (var key in labels) {
                 if (labels.hasOwnProperty(key)) {
-                    var label = labels[key];
-                    labelsState.push({
-                        text: label.textContent,
-                        left: label.style.left,
-                        top: label.style.top,
-                        color: label.style.color
-                    });
+                    if (key === "In" || key === "Out") {
+                        labels[key].forEach(function(label) {
+                            var labelData = {
+                                text: label.textContent,
+                                left: label.style.left,
+                                top: label.style.top,
+                                color: label.style.color
+                            };
+                            if (key === "In") {
+                                inLabelsState.push(labelData);
+                            } else {
+                                outLabelsState.push(labelData);
+                            }
+                        });
+                    } else {
+                        var label = labels[key];
+                        labelsState.push({
+                            text: label.textContent,
+                            left: label.style.left,
+                            top: label.style.top,
+                            color: label.style.color
+                        });
+                    }
                 }
             }
             localStorage.setItem('labelsState', JSON.stringify(labelsState));
+            localStorage.setItem('inLabelsState', JSON.stringify(inLabelsState));
+            localStorage.setItem('outLabelsState', JSON.stringify(outLabelsState));
         }
 
         // Function to load the labels state from local storage and recreate labels
         function loadLabelsState() {
             var labelsState = JSON.parse(localStorage.getItem('labelsState'));
+            var inLabelsState = JSON.parse(localStorage.getItem('inLabelsState'));
+            var outLabelsState = JSON.parse(localStorage.getItem('outLabelsState'));
             if (labelsState) {
                 var videoContainer = document.querySelector('.video-container');
                 labelsState.forEach(function(labelState) {
@@ -443,23 +465,45 @@
         // Function to save the labels state to local storage
         function saveLabelsState(labels) {
             var labelsState = [];
+            var inLabelsState = [];
+            var outLabelsState = [];
             for (var key in labels) {
                 if (labels.hasOwnProperty(key)) {
-                    var label = labels[key];
-                    labelsState.push({
-                        text: label.textContent,
-                        left: label.style.left,
-                        top: label.style.top,
-                        color: label.style.color
-                    });
+                    if (key === "In" || key === "Out") {
+                        labels[key].forEach(function(label) {
+                            var labelData = {
+                                text: label.textContent,
+                                left: label.style.left,
+                                top: label.style.top,
+                                color: label.style.color
+                            };
+                            if (key === "In") {
+                                inLabelsState.push(labelData);
+                            } else {
+                                outLabelsState.push(labelData);
+                            }
+                        });
+                    } else {
+                        var label = labels[key];
+                        labelsState.push({
+                            text: label.textContent,
+                            left: label.style.left,
+                            top: label.style.top,
+                            color: label.style.color
+                        });
+                    }
                 }
             }
             localStorage.setItem('labelsState', JSON.stringify(labelsState));
+            localStorage.setItem('inLabelsState', JSON.stringify(inLabelsState));
+            localStorage.setItem('outLabelsState', JSON.stringify(outLabelsState));
         }
 
         // Function to load the labels state from local storage and recreate labels
         function loadLabelsState() {
             var labelsState = JSON.parse(localStorage.getItem('labelsState'));
+            var inLabelsState = JSON.parse(localStorage.getItem('inLabelsState'));
+            var outLabelsState = JSON.parse(localStorage.getItem('outLabelsState'));
             if (labelsState) {
                 var videoContainer = document.querySelector('.video-container');
                 labelsState.forEach(function(labelState) {
@@ -501,23 +545,45 @@
         // Function to save the labels state to local storage
         function saveLabelsState(labels) {
             var labelsState = [];
+            var inLabelsState = [];
+            var outLabelsState = [];
             for (var key in labels) {
                 if (labels.hasOwnProperty(key)) {
-                    var label = labels[key];
-                    labelsState.push({
-                        text: label.textContent,
-                        left: label.style.left,
-                        top: label.style.top,
-                        color: label.style.color
-                    });
+                    if (key === "In" || key === "Out") {
+                        labels[key].forEach(function(label) {
+                            var labelData = {
+                                text: label.textContent,
+                                left: label.style.left,
+                                top: label.style.top,
+                                color: label.style.color
+                            };
+                            if (key === "In") {
+                                inLabelsState.push(labelData);
+                            } else {
+                                outLabelsState.push(labelData);
+                            }
+                        });
+                    } else {
+                        var label = labels[key];
+                        labelsState.push({
+                            text: label.textContent,
+                            left: label.style.left,
+                            top: label.style.top,
+                            color: label.style.color
+                        });
+                    }
                 }
             }
             localStorage.setItem('labelsState', JSON.stringify(labelsState));
+            localStorage.setItem('inLabelsState', JSON.stringify(inLabelsState));
+            localStorage.setItem('outLabelsState', JSON.stringify(outLabelsState));
         }
 
         // Function to load the labels state from local storage and recreate labels
         function loadLabelsState() {
             var labelsState = JSON.parse(localStorage.getItem('labelsState'));
+            var inLabelsState = JSON.parse(localStorage.getItem('inLabelsState'));
+            var outLabelsState = JSON.parse(localStorage.getItem('outLabelsState'));
             if (labelsState) {
                 var videoContainer = document.querySelector('.video-container');
                 labelsState.forEach(function(labelState) {
@@ -1306,3 +1372,24 @@
 </body>
 
 </html>
+        // Helper function to create a label
+        function createLabel(labelState, type) {
+            var videoContainer = document.querySelector('.video-container');
+            var label = document.createElement('span');
+            label.textContent = labelState.text;
+            label.style.position = 'absolute';
+            label.style.left = labelState.left;
+            label.style.top = labelState.top;
+            label.style.color = labelState.color;
+            label.style.fontSize = '15px';
+            label.style.fontWeight = 'bold';
+            label.style.pointerEvents = 'none';
+            videoContainer.appendChild(label);
+            if (type === "In") {
+                labels["In"].push(label);
+            } else if (type === "Out") {
+                labels["Out"].push(label);
+            } else {
+                labels[label.textContent] = label;
+            }
+        }
