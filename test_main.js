@@ -27,7 +27,7 @@ function createWindow() {
 
 // Function to check if the backend is responsive and reload if necessary
 function checkBackendHealth() {
-    fetch.default('http://localhost:5000/health')
+    fetch('http://localhost:5000/health')
         .then(response => {
             if (!response.ok) {
                 // If the response is not ok, reload the window
@@ -47,7 +47,7 @@ setInterval(checkBackendHealth, 300000); // 300000 milliseconds = 5 minutes
 
 function checkBackendConnectionAndReconnect() {
     // Example: Attempt to fetch a simple endpoint from your backend
-    fetch.default('http://localhost:5000/health')
+    fetch('http://localhost:5000/health')
         .then(response => {
             if (response.ok) {
                 console.log('Backend connection is healthy.');
