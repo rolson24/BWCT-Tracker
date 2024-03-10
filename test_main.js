@@ -128,11 +128,11 @@ async function getPlots(){
 
 function startFlaskApp() {
     flaskProcess = spawn('python', ['./backend/BWCT_app.py']);
-    
+
     flaskProcess.stdout.on('data', (data) => {
     	console.log(`stdout: ${data}`);
     });
-    
+
     flaskProcess.stderr.on('data', (data) => {
         console.log(`stderr: ${data}`);
         // This check might not work as expected because `data` is a Buffer, not a string
@@ -140,8 +140,8 @@ function startFlaskApp() {
         if (data.toString().includes("Running on http://")) {
             console.log("Flask is ready. Loading window...");
             mainWindow.loadURL('http://127.0.0.1:5000');
-            
-	        // Listen for an IPC message to open the file dialog
+
+         // Listen for an IPC message to open the file dialog
             ipcMain.handle('open-file-dialog', async () => {
                 const { filePaths } = await dialog.showOpenDialog({
                     properties: ['openFile']
@@ -186,7 +186,7 @@ function startFlaskApp() {
                     }
                 });
 
-                
+
             });
 
             ipcMain.on('save-processed-video-file', async (event) => {
@@ -223,7 +223,7 @@ function startFlaskApp() {
                     }
                 });
 
-                
+
             });
 
             ipcMain.on('save-line-crossings-file', async (event) => {
@@ -275,13 +275,13 @@ function startFlaskApp() {
                     buttonLabel: 'Select', // This label might not always be customizable for directory dialogs
                     properties: ['openDirectory', 'createDirectory']
                 });
-                
+
                 if (canceled || filePaths.length === 0) {
                     console.log('No folder selected.');
                     event.sender.send('save-plots-folder-response', 'canceled');
                     return;
                 }
-                
+
                 const destinationPath = filePaths[0]; // The selected directory path
                 console.log("Selected folder:", destinationPath);
 
@@ -309,7 +309,7 @@ function startFlaskApp() {
             });
         }
     });
-    
+
 
 }
 
@@ -331,6 +331,20 @@ app.on('ready', () => {
     powerMonitor.on('resume', () => {
         console.log('The system has resumed from sleep');
         checkBackendConnectionAndReconnect();
+        // Reload the video player with the current video source to ensure it plays after wake
+        if (mainWindow) {
+            mainWindow.webContents.executeJavaScript(`
+                var videoPlayer = document.getElementById('video-player');
+                if (videoPlayer) {
+                    var currentSrc = videoPlayer.currentSrc;
+                    videoPlayer.src = ''; // Reset the source to force reload
+                    videoPlayer.load(); // Load the video player without source to clear previous state
+                    videoPlayer.src = currentSrc; // Set the source back to the original path
+                    videoPlayer.load(); // Load the video player with the new source
+                    videoPlayer.play(); // Play the video
+                }
+            `).catch(err => console.error('Failed to execute JavaScript in the renderer process:', err));
+        }
     });
 });
 
@@ -351,7 +365,7 @@ app.on('before-quit', (event) => {
     if (flaskProcess) {
         console.log('Shutting down Flask process...');
         flaskProcess.kill('SIGINT'); // Send SIGINT to mimic Ctrl+C
-        
+
         setTimeout(() => {
             console.log('Force quitting Electron app...');
             app.exit(0);
