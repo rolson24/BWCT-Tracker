@@ -89,6 +89,10 @@ def upload():
     else:
         print("render template")
         return render_template('upload.html')  # replace 'index.html' with your actual template
+    
+@app.route('/health')
+def health():
+    return 200
 
 @app.route('/receive-file-paths', methods=['POST'])
 def receive_file_paths():
