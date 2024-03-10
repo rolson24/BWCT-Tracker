@@ -391,6 +391,7 @@
             var videoPlayer = document.getElementById('video-player');
             // Check if the video player has a source and if it's not empty
             if (videoPlayer && videoPlayer.getAttribute('src')) {
+                console.log("reload the video player");
                 reloadVideoPlayer(); // Call the reloadVideoPlayer function if a source is present
             }
         }
