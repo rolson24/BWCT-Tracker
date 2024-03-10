@@ -316,6 +316,10 @@ function startFlaskApp() {
 app.on('ready', () => {
     startFlaskApp();
     createWindow();
+    // Simulate the computer going to sleep after 3 minutes
+    setTimeout(() => {
+        powerMonitor.emit('suspend');
+    }, 180000); // 180000 milliseconds = 3 minutes
     app.on('ready', () => {
         createWindow();
 
