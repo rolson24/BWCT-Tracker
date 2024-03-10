@@ -249,6 +249,27 @@
             ctx.stroke();
         }
 
+        // Function to save the canvas state to local storage
+        function saveCanvasState() {
+            var canvas = document.getElementById('canvas');
+            var canvasState = canvas.toDataURL(); // Save canvas drawing as data URL
+            localStorage.setItem('canvasState', canvasState);
+        }
+
+        // Function to load the canvas state from local storage
+        function loadCanvasState() {
+            var canvas = document.getElementById('canvas');
+            var ctx = canvas.getContext('2d');
+            var canvasState = localStorage.getItem('canvasState');
+            if (canvasState) {
+                var image = new Image();
+                image.onload = function() {
+                    ctx.drawImage(image, 0, 0); // Draw the saved image onto the canvas
+                };
+                image.src = canvasState;
+            }
+        }
+
         // Function to save the counts data to local storage
         function saveCountsDataToLocalStorage(countsData) {
             localStorage.setItem('countsData', JSON.stringify(countsData));
@@ -340,9 +361,15 @@
 
         // Call loadStateFromLocalStorage when the page loads
 
+
+        // Load the canvas state when the page is ready
+        loadCanvasState();
+
         // Save the state to local storage when the page is unloaded
         window.addEventListener('beforeunload', function (e) {
             saveStateToLocalStorage();
+            // Save the canvas state to local storage
+            saveCanvasState();
             // Rest of the beforeunload event...
         });
 
