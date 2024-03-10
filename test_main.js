@@ -24,6 +24,26 @@ function createWindow() {
     });
 }
 
+// Function to check if the backend is responsive and reload if necessary
+function checkBackendHealth() {
+    fetch('http://localhost:5000/health')
+        .then(response => {
+            if (!response.ok) {
+                // If the response is not ok, reload the window
+                console.log('Backend is not responsive, reloading window...');
+                mainWindow.reload();
+            }
+        })
+        .catch(error => {
+            console.error('Error checking backend health:', error);
+            // If there is an error, reload the window
+            mainWindow.reload();
+        });
+}
+
+// Set an interval to check the backend health every 5 minutes
+setInterval(checkBackendHealth, 300000); // 300000 milliseconds = 5 minutes
+
 function checkBackendConnectionAndReconnect() {
     // Example: Attempt to fetch a simple endpoint from your backend
     fetch('http://localhost:5000/health')
