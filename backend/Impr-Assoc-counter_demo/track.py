@@ -255,6 +255,9 @@ if __name__ == "__main__":
 
   # save the line crossings file
   LINE_CROSSINGS_FILE = f"{THIS_RUN_FOLDER}/{SOURCE_VIDEO_NAME}_line_crossings.txt"
+
+  # path to save the number of people in frame file
+  PERSON_VOLUME_FILE = f"{THIS_RUN_FOLDER}/{SOURCE_VIDEO_NAME}_person_volume.txt"
  
   print(f"color calib enable: {args.color_calib_enable}")
   MODEL = args.ckpt
@@ -334,6 +337,10 @@ if __name__ == "__main__":
       f.write(f"line_{i}: ({line[0]}, {line[1]}),")
     f.write("\n")
   print(f"line_zones {line_zones}")
+
+  with open(PERSON_VOLUME_FILE, 'w') as f:
+     logger.info("Create person volume file")
+     f.write("Frame_id, Num_of_people")
 
   # parse the day night file
   camera_switches_dict = {}
@@ -595,6 +602,12 @@ if __name__ == "__main__":
         results = yolo_model.predict(frame_cpu, iou=0.7, conf=0.1, fuse_model=False)
         detections = sv.Detections.from_yolo_nas(results)
         detections = detections[np.isin(detections.class_id, selected_classes)]
+
+    ''' Save people volumes '''
+    with open(PERSON_VOLUME_FILE, '+a', newline='', encoding='UTF8') as f:
+       writer = csv.writer(f)
+       writer.writerow([frame_id, len(detections)])
+       
     ''' Tracking '''
     # commented one for impr_associated
     if OBJECT_TRACKER == "BYTETrack":

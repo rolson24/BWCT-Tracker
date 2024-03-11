@@ -44,7 +44,7 @@
         </div>
 
 
-        <div class="video-container">
+        <div class="video-container" id="video-container">
             <video id="video-player" controls style="width: 100%; height: 100%;"></video>
             <canvas id="canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: auto;"></canvas>
             <div id="loader" class="save_spinner" style="position:absolute ; top: 0; left: 0;display:none;"></div>
@@ -70,18 +70,20 @@
             <button id="reprocess-button" class="btn btn-secondary mt-3" style="display: none">Reprocess Counts</button>
             <button id="clear-lines-button" class="btn btn-secondary mt-3" style="display: none">Clear Lines</button>
 
+            <button id="download-raw-data-button" class="btn btn-secondary mt-3" style="display: none">Download Raw Data</button>
+
             <button id="download-lines-button" class="btn btn-secondary mt-3" style="display: none">Download Line
                 Crossings</button>
-            <a id="download-lines-link" href="/download_lines" download style="display: none">Download Line
-                Crossings</a>
+            <!-- <a id="download-lines-link" href="/download_lines" download style="display: none">Download Line
+                Crossings</a> -->
 
             <button id="download-counts-button" class="btn btn-secondary mt-3" style="display: none">Download Counts
                 Output</button>
-            <a id="download-counts-link" href="" download style="display: none">Download Counts Output</a>
+            <!-- <a id="download-counts-link" href="" download style="display: none">Download Counts Output</a> -->
 
             <button id="download-processed-video-button" class="btn btn-secondary mt-3" style="display: none">Download
                 Processed Video</button>
-            <a id="download-processed-video-link" href="" download style="display: none">Download Processed Video</a>
+            <!-- <a id="download-processed-video-link" href="" download style="display: none">Download Processed Video</a> -->
 
             <button id="download-plots-button" class="btn btn-secondary mt-3" style="display: none">Download
                 Graphs</button>
@@ -115,8 +117,14 @@
         </div>
         <div id="crossings-plot"></div>
 
+        <div id="person-volume-plot"></div>
+
         <div id="track-plot"></div>
 
+
+        <div id="ilovejavascript" style="display: none;">
+            <canvas id="thisisfucked"></canvas>
+        </div>
     </div>
 
     <style>
@@ -231,27 +239,27 @@
     </style>
 
     <script>
-    // Function to handle Socket.IO client reconnection
-    function handleSocketReconnection(socket) {
-        // Attempt to reconnect with an exponential backoff strategy
-        var reconnectAttempts = 0;
-        var maxReconnectAttempts = 5;
-        var reconnect = function() {
-            if (reconnectAttempts < maxReconnectAttempts) {
-                setTimeout(function() {
-                    if (!socket.connected) {
-                        console.log('Attempting to reconnect to the WebSocket server...');
-                        socket.connect();
-                        reconnectAttempts++;
-                        reconnect();
-                    }
-                }, Math.pow(2, reconnectAttempts) * 1000); // Exponential backoff
-            } else {
-                console.log('Max reconnection attempts reached. Could not reconnect to the WebSocket server.');
-            }
-        };
-        reconnect();
-    }
+        // Function to handle Socket.IO client reconnection
+        function handleSocketReconnection(socket) {
+            // Attempt to reconnect with an exponential backoff strategy
+            var reconnectAttempts = 0;
+            var maxReconnectAttempts = 5;
+            var reconnect = function() {
+                if (reconnectAttempts < maxReconnectAttempts) {
+                    setTimeout(function() {
+                        if (!socket.connected) {
+                            console.log('Attempting to reconnect to the WebSocket server...');
+                            socket.connect();
+                            reconnectAttempts++;
+                            reconnect();
+                        }
+                    }, Math.pow(2, reconnectAttempts) * 1000); // Exponential backoff
+                } else {
+                    console.log('Max reconnection attempts reached. Could not reconnect to the WebSocket server.');
+                }
+            };
+            reconnect();
+        }
 
 
         function drawArrow(ctx, fromx, fromy, tox, toy, arrowWidth, color) {
@@ -354,6 +362,10 @@
                 });
             }
         }
+
+        var processing = false;
+        var labels = {};  // Create an object to store the labels
+
 
         // Function to save the current state to local storage
         function saveStateToLocalStorage() {
@@ -535,10 +547,11 @@
             renderPlot(crossingsPlotData, 'crossings-plot', 'counts_per_hour');
             var trackPlotData = loadPlotDataFromLocalStorage('trackPlotData');
             renderPlot(trackPlotData, 'track-plot', 'tracks_overlay');
+            var personVolumePlotData = loadPlotDataFromLocalStorage('personVolumePlotData');
+            renderPlot(personVolumePlotData, 'person-volume-plot', 'person_volume');
 
             var drawing = false;
             var lineStart = null;
-            var processing = false;
 
             $('#video-player, #canvas').hide();
 
@@ -655,8 +668,10 @@
                 labels['Out'] = [];
                 labels['In'] = [];
             });
+            const forceReflow = (element) => {
+                $('#video-upload-button').focus()
+            };
 
-            var labels = {};  // Create an object to store the labels
             labels['Out'] = [];
             labels['In'] = [];
             $('#canvas').on('click', function (e) {
@@ -894,14 +909,26 @@
                         labels["Out"].push(out_label);
                         labels["In"].push(in_label);
                         lineStart = null;
-                        label.hide().show(0);
-                        out_label.hide().show(0);
-                        in_label.hide().show(0);
-                        canvas.hide().show(0);
+
+
+                        // label.hide().show(0);
+                        // label.style.display = 'none';
+                        // label.style.display = 'block';
+
+                        // out_label.hide().show(0);
+                        // in_label.hide().show(0);
+                        // canvas.hide().show(0);
+
+                        // Apply to the body or specific element needing refresh
+                        forceReflow($('#video-container'));
                     } else {
                         lineStart = { x: x, y: y };
                     }
                 }
+                forceReflow($('#video-container'));
+
+
+                document.getElementById("thisisfucked").clear
             });
 
 
@@ -1028,7 +1055,7 @@
 
 
                 // Make an AJAX request to get the counts data
-                fetch('/counts')
+                fetch('/get_counts')
                     .then(response => response.json())
                     // Inside the fetch success callback
                     .then(data => {
@@ -1118,6 +1145,24 @@
                         savePlotDataToLocalStorage(crossingsPlotData, 'crossingsPlotData');
 
 
+                    });
+
+                fetch('/get_person_volume_data', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    // Include the fps in the body of the request
+                    body: JSON.stringify({ fps: videoFPS })
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        var fig = JSON.parse(data.plot);
+
+                        // Use Plotly to render the graph
+                        var personVolumePlotData = { data: fig.data, layout: fig.layout };
+                        renderPlot(personVolumePlotData, 'person-volume-plot', video_name + '_person_volume');
+                        savePlotDataToLocalStorage(personVolumePlotData, 'personVolumePlotData');
                     });
 
                 fetch('/get_tracks', {

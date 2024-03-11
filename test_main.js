@@ -20,8 +20,8 @@ function createWindow() {
     });
 
     // It's a good practice to also handle window close events
-    mainWindow.on('closed', () => {
-        mainWindow = null;
+    mainWindow.on('close', function() {
+        mainWindow.webContents.executeJavaScript('localStorage.clear();');
     });
 }
 
@@ -132,6 +132,7 @@ function startFlaskApp() {
     flaskProcess.stdout.on('data', (data) => {
     	console.log(`stdout: ${data}`);
     });
+
 
     flaskProcess.stderr.on('data', (data) => {
         console.log(`stderr: ${data}`);
@@ -339,6 +340,8 @@ app.on('window-all-closed', () => {
         app.quit();
     }
 });
+
+
 
 app.on('activate', () => {
     if (mainWindow === null) {

@@ -522,7 +522,7 @@ def reprocess_video(filename):
 
 
 
-@app.route('/counts', methods=['GET'])
+# @app.route('/counts', methods=['GET'])
 
 @app.route('/get_counts', methods=['GET'])
 def get_counts():
@@ -707,6 +707,65 @@ def get_crossings_data():
         )
         
         fig_json = crossings_fig.to_json()
+
+        # return jsonify(plotly_data)
+        return jsonify({'plot': fig_json, 'filename': str(video_name)})
+
+    else:
+        return jsonify({'message': 'No runs found for the video'}),  404
+
+
+@app.route("/get_person_volume_data", methods=['POST'])
+def get_person_volume():
+    global volume_fig
+    filename = os.path.split(file_paths[0])[1]
+    # Construct the path to the counts file
+    video_name = filename.split('.')[0]
+    base_path = os.path.join('backend/static/outputs', video_name)
+    print(base_path)
+    run_folders = glob.glob(os.path.join(base_path, 'run_*'))
+    # Sort the folders by creation time and get the most recent one
+    run_folders.sort(key=os.path.getctime, reverse=True)
+    most_recent_run = run_folders[0] if run_folders else None
+    # Check if there is a most recent run folder
+    if most_recent_run:
+        data = request.json
+        fps = data['fps']  # Get fps from the request data
+
+        # Read the line_crossings.txt file and parse the data
+        person_volume_file_path = os.path.join(most_recent_run, f'{video_name}_person_volume.txt')
+        volume_df = pd.read_csv(person_volume_file_path, header=None, skiprows=1, sep=',')
+
+        volume_df.columns = ['frame_num', 'volume']
+
+        # Calculate timestamps and aggregate by hour
+        volume_df['timestamp'] = pd.to_datetime(volume_df['frame_num'] / fps, unit='s')
+
+        # Format timestamps to only include the time portion
+        volume_df['time'] = volume_df['timestamp'].dt.time
+
+        # volume_df.set_index('time', inplace=True)
+        # hourly_counts = volume_df.groupby([pd.Grouper(freq='15min')]).size().reset_index(name='count')
+
+        # Use the formatted 'time' for plotting
+        # volume_df['time'] = volume_df['timestamp'].dt.time
+        volume_df.drop(columns=['timestamp'], inplace=True)
+
+        # smoothing
+        kernel_size = 10
+        kernel = np.ones(kernel_size) / kernel_size
+
+        volume_df['volume'] = np.convolve(volume_df['volume'], kernel, mode='same')
+
+        volume_fig = go.Figure()
+
+        volume_fig.add_trace(go.Scatter(x=volume_df['time'], y=volume_df['volume'], mode='lines', name='Person Volume'))
+
+        volume_fig.update_layout(title="Volume of People Over Time",
+                xaxis=dict(showgrid=True), yaxis=dict(showgrid=True),
+                margin=dict(b=150))
+
+        fig_json = volume_fig.to_json()
 
         # return jsonify(plotly_data)
         return jsonify({'plot': fig_json, 'filename': str(video_name)})
@@ -1003,7 +1062,7 @@ def get_track_data_plot():
 
 @app.route('/get_plots')
 def get_plots():
-    global track_fig, counts_fig, crossings_fig
+    global track_fig, counts_fig, crossings_fig, volume_fig
     filename = os.path.split(file_paths[0])[1]
     video_path = file_paths[0]
     # Construct the path to the counts file
@@ -1023,10 +1082,13 @@ def get_plots():
         tracks_image_path = os.path.join(plots_dir_path, f'{video_name}_tracks_overlay.png')
         counts_image_path = os.path.join(plots_dir_path, f'{video_name}_counts.png')
         crossings_image_path = os.path.join(plots_dir_path, f'{video_name}_15_min.png')
+        volume_image_path = os.path.join(plots_dir_path, f'{video_name}_person_volume.png')
         try:
             track_fig.write_image(tracks_image_path)
             counts_fig.write_image(counts_image_path)
             crossings_fig.write_image(crossings_image_path)
+            volume_fig.write_image(volume_image_path)
+
         except Exception as err:
             print("no figures found")
             print(f"Error: {err}")
