@@ -123,7 +123,8 @@ def receive_raw_tracks_file_path():
     
     zip_file = file_paths[0]
 
-    video_name = zip_file.split('.')[0]
+    video_name = os.path.basename(zip_file).split('.')[0]
+    print(f"zip file name: {video_name}")
     # base_path = os.path.join(base_path, video_name)
     # run_folders = glob.glob(os.path.join(base_path, 'run_*'))
     # # Sort the folders by creation time and get the most recent one
