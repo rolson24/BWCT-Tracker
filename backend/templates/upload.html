@@ -30,6 +30,7 @@
             <button type="submit" class="btn btn-primary mt-3">Upload Video</button>
         </form> -->
         <button id="video-upload-button" class="btn btn-secondary mt-3">Upload Video</button>
+        <button id="raw-data-button" class="btn btn-secondary mt-3">Upload Raw Data</button>
 
         <div class="progress mt-3">
             <div id="upload-progress" class="progress-bar" role="progressbar" style="width: 0%" aria-valuenow="0"
@@ -619,6 +620,55 @@
             });
 
 
+            $('#raw-data-button').on('click', function(e) {
+                // Prevent the default form submission if the button is part of a form
+                e.preventDefault();
+
+                // Call the openFileDialog function exposed by the preload script
+                window.electronAPI.openFileDialog().then(result => {
+                    // Assuming openFileDialog is adjusted to return a Promise that resolves with the file selection result
+                    console.log("get filenames")
+                    console.log(result)
+                    // You can now do something with the selected file paths, like sending them to your Flask backend
+                    $.ajax({
+                        url: '/receive-raw-tracks-file-path',
+                        type: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify({ filenames: result }),
+                        success: function(response) {
+                            console.log('Server response:', response);
+                            $('#draw-button').show();
+                            $('#process-button').show();  // Show the "Process Video" button
+                            $('#reprocess-button').show();  // Show the "Reprocess Counts" button
+                            $('#clear-lines-button').show();  // Show the "Clear Lines" button
+                            // var video_name = response.filename.split('.')[0];
+                            // var video_filename = response.filename;
+
+                            $('#video-player').attr('src', `/stream_video`, 'type', 'video/mp4').css({ width: '100%', height: '100%' }).prop('controls', true).on('loadedmetadata', function () {
+                                var canvas = $('#canvas')[0];
+                                var ctx = canvas.getContext('2d');
+                                var aspectRatio = this.videoHeight / this.videoWidth;
+                                var canvasHeight = this.clientWidth * aspectRatio;
+                                console.log(`Canvas height: ${canvasHeight}`)
+                                var yOffset = (this.clientHeight - canvasHeight) / 2
+                                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                                $('#canvas').css("top", yOffset).attr({ width: this.clientWidth, height: canvasHeight }).css('pointer-events', 'none').show();
+                            }).show();
+
+                            $('#process-button').prop('disabled', true)
+
+                            $('#download-counts-link').attr('href', '/download_counts');
+                            $('#download-processed-video-link').attr('href', '/download_processed_video');
+                        },
+                        error: function(xhr, status, error) {
+                            console.error('Error sending filenames:', error);
+                        }
+                    })
+                }).catch(err => {
+                    console.error('Error opening file dialog:', err);
+                });
+            });
+
 
             $('#upload-day-night-form').on('submit', function(e) {
                 e.preventDefault(); // Prevent default form submission behavior
@@ -1010,6 +1060,10 @@
                 window.electronAPI.saveCountsFile();
             });
 
+            $('#download-raw-data-button').on('click', function () {
+                window.electronAPI.saveRawTracksFile();
+            });
+
             $('#download-lines-button').on('click', function () {
                 window.electronAPI.saveLineCrossingsFile();
             });
@@ -1115,6 +1169,7 @@
                             row.appendChild(cell);
                             tableBody.appendChild(row);
                         }
+                        $('#download-raw-data-button').show(); // Show the "Download Raw Data" button
                         $('#download-lines-button').show();  // Show the "Download Line Crossings" button
                         $('#download-counts-button').show();  // Show the "Download Counts Output" button
                         $('#download-processed-video-button').show();  // Show the "Download Processed Video" button

@@ -5,6 +5,7 @@ from flask import send_from_directory, send_file
 from flask_uploads import UploadSet, configure_uploads, ALL
 from flask import Response, stream_with_context
 from flask_socketio import SocketIO
+import zipfile
 
 import atexit
 
@@ -109,6 +110,45 @@ def receive_file_paths():
         observer = start_file_watching(path, handle_file_change)
     return jsonify({'message': 'Received file paths successfully'})
 
+@app.route('/receive-raw-tracks-file-path', methods=['POST'])
+def receive_raw_tracks_file_path():
+    global file_paths
+    data = request.get_json()
+    print(data)
+    file_paths = data['filenames']
+    print(file_paths)
+    if exists('coordinates.txt'):
+        remove('coordinates.txt')
+    # Process the file paths as needed here
+    
+    zip_file = file_paths[0]
+
+    video_name = zip_file.split('.')[0]
+    # base_path = os.path.join(base_path, video_name)
+    # run_folders = glob.glob(os.path.join(base_path, 'run_*'))
+    # # Sort the folders by creation time and get the most recent one
+    # run_folders.sort(key=os.path.getctime, reverse=True)
+    # most_recent_run = run_folders[0] if run_folders else None
+
+    # Specify the directory to extract to
+    extract_to = f'backend/static/outputs/{video_name}/run_1'
+
+    tracks_file = os.path.join(extract_to, "tracks_output.txt")
+    tracks_file_new = os.path.join(extract_to, f"{video_name}_tracks_output.txt")
+
+
+    # Ensure the target directory exists
+    os.makedirs(extract_to, exist_ok=True)
+
+    # Open the ZIP file
+    with zipfile.ZipFile(zip_file, 'r') as zip_ref:
+        # Extract all the contents into the directory
+        zip_ref.extractall(extract_to)
+
+    if os.path.exists(tracks_file):
+        os.rename(tracks_file, tracks_file_new)
+    return jsonify({'message': 'Received file paths successfully'})
+
 @app.route('/upload_day_night', methods=['GET', 'POST'])
 def upload_day_night():
     global video_path
@@ -174,7 +214,40 @@ def download_counts():
             return "Counts file not found in the most recent run", 404
     else:
         return "No runs found for the video", 404
-    
+
+@app.route('/get_raw_tracks_file_path', methods=['GET'])
+def get_raw_tracks():
+    filename = os.path.split(file_paths[0])[1]
+    # Construct the path to the counts file
+    video_name = filename.split('.')[0]
+    base_name = 'backend/static/outputs'
+    base_path = os.path.join(base_name, video_name)
+    print(base_path)
+    run_folders = glob.glob(os.path.join(base_path, 'run_*'))
+    # Sort the folders by creation time and get the most recent one
+    run_folders.sort(key=os.path.getctime, reverse=True)
+    most_recent_run = run_folders[0] if run_folders else None
+    # Check if there is a most recent run folder
+    if most_recent_run:
+        counts_file_path = os.path.join(most_recent_run, f'{video_name}_tracks_output.txt')
+        middle_video_frame_path = os.path.join(most_recent_run, "middle_frame.jpg")
+
+        # Specify the name of the output ZIP file
+        output_zip = os.path.join(base_name, f"{video_name}_raw_data.zip")
+
+        # Create a new ZIP file
+        with zipfile.ZipFile(output_zip, 'w', zipfile.ZIP_DEFLATED) as myzip:
+            myzip.write(counts_file_path, arcname='tracks_output.txt')
+            myzip.write(middle_video_frame_path, arcname='middle_frame.jpg')
+
+        if os.path.exists(output_zip):
+            return output_zip
+        else:
+            return "Tracks file not found in the most recent run", 404
+    else:
+        return "No runs found for the video", 404
+
+
 @app.route('/get_counts_file_path')
 def get_counts_file_path():
     if not file_paths:  # Check if file_paths is empty
@@ -520,9 +593,6 @@ def reprocess_video(filename):
         else:  
             print("Tracks file not found in the most recent run")
 
-
-
-# @app.route('/counts', methods=['GET'])
 
 @app.route('/get_counts', methods=['GET'])
 def get_counts():

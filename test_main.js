@@ -66,6 +66,21 @@ function checkBackendConnectionAndReconnect() {
         });
 }
 
+async function getRawTracksFilePath() {
+    try {
+        // Removed the dynamic import as we've already imported node-fetch at the top
+        const response = await fetch('http://localhost:5000/get_raw_tracks_file_path');
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        const countsFilePath = await response.text();
+        return countsFilePath;
+    } catch (error) {
+        console.error("Failed to get tracks file path:", error);
+        return null;
+    }
+}
+
 async function getCountsFilePath() {
     try {
         // Removed the dynamic import as we've already imported node-fetch at the top
@@ -151,6 +166,41 @@ function startFlaskApp() {
                 return filePaths;
             });
 
+            ipcMain.on('save-raw-tracks-file', async (event) => {
+                const tracksFilePath = await getRawTracksFilePath();  // Retrieve the counts file path
+
+                if (!tracksFilePath || tracksFilePath.includes("No video file provided") || tracksFilePath.includes("Tracks file not found") || tracksFilePath.includes("No runs found")) {
+                    console.error('Failed to get raw tracks file path:', tracksFilePath);
+                    event.sender.send('save-raw-tracks-file-response', 'failure');
+                    return;
+                }
+                const { canceled, filePath } = await dialog.showSaveDialog({
+                    title: 'Save Tracks File',
+                    buttonLabel: 'Save',
+                    // Suggest a default file name if you like
+                    defaultPath: path.join(app.getPath('downloads'), 'raw_data.zip'),
+                    // Set filters to limit to specific file types (optional)
+                    filters: [
+                        { name: 'Zip Files', extensions: ['zip'] },
+                    ]
+                });
+
+                if (canceled || !filePath) {
+                    // User cancelled the dialog or closed it without selecting a location
+                    return;
+                }
+
+                // Copy the file to the user-selected location
+                fs.copyFile(tracksFilePath, filePath, (err) => {
+                    if (err) {
+                        console.error('Failed to save tracks file:', err);
+                        event.sender.send('save-raw-tracks-file-response', 'failure');
+                    } else {
+                        console.log('Tracks file saved successfully');
+                        event.sender.send('save-raw-tracks-file-response', 'success');
+                    }
+                });
+            });
 
             ipcMain.on('save-counts-file', async (event) => {
                 const countsFilePath = await getCountsFilePath();  // Retrieve the counts file path
