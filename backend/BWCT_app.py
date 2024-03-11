@@ -137,6 +137,9 @@ def receive_raw_tracks_file_path():
     tracks_file = os.path.join(extract_to, "tracks_output.txt")
     tracks_file_new = os.path.join(extract_to, f"{video_name}_tracks_output.txt")
 
+    volume_file = os.path.join(extract_to, "person_volume.txt")
+    volume_file_new = os.path.join(extract_to, f"{video_name}_person_volume.txt")
+
 
     # Ensure the target directory exists
     os.makedirs(extract_to, exist_ok=True)
@@ -146,8 +149,13 @@ def receive_raw_tracks_file_path():
         # Extract all the contents into the directory
         zip_ref.extractall(extract_to)
 
+    # Rename file to be in expected format for /get_tracks
     if os.path.exists(tracks_file):
         os.rename(tracks_file, tracks_file_new)
+
+    # Rename file to be in expected format for /volume_file
+    if os.path.exists(volume_file):
+        os.rename(volume_file, volume_file_new)
     return jsonify({'message': 'Received file paths successfully'})
 
 @app.route('/upload_day_night', methods=['GET', 'POST'])
@@ -232,6 +240,8 @@ def get_raw_tracks():
     if most_recent_run:
         counts_file_path = os.path.join(most_recent_run, f'{video_name}_tracks_output.txt')
         middle_video_frame_path = os.path.join(most_recent_run, "middle_frame.jpg")
+        person_volume_file_path = os.path.join(most_recent_run, f'{video_name}_person_volume.txt')
+
 
         # Specify the name of the output ZIP file
         output_zip = os.path.join(base_name, f"{video_name}_raw_data.zip")
@@ -240,6 +250,8 @@ def get_raw_tracks():
         with zipfile.ZipFile(output_zip, 'w', zipfile.ZIP_DEFLATED) as myzip:
             myzip.write(counts_file_path, arcname='tracks_output.txt')
             myzip.write(middle_video_frame_path, arcname='middle_frame.jpg')
+            myzip.write(person_volume_file_path, arcname='person_volume.txt')
+
 
         if os.path.exists(output_zip):
             return output_zip
@@ -513,7 +525,7 @@ def reprocess():
     # data = request.get_json()
     # print("Received data:", data)  # Add this line to log the received data
     # filename = data.get('filename')
-    filename = os.path.split(file_paths[0])[0]
+    filename = os.path.split(file_paths[0])[1]
     if filename:
         socketio.start_background_task(reprocess_video, filename)
         return jsonify({'message': 'Video re-processing started'}),  200
@@ -521,6 +533,7 @@ def reprocess():
 
 def reprocess_video(filename):
     # Run the different script on the output_tracks.csv file\
+    print(f"reprocess filename {filename}")
     tracker_base_path = "backend/Impr-Assoc-counter_demo"
     reprocess_script_path = f"{tracker_base_path}/reprocess_tracks.py"
     base_path = "backend/static/outputs/"
@@ -537,6 +550,7 @@ def reprocess_video(filename):
         tracks_input_file = os.path.join(most_recent_run, f'{video_name}_tracks_output.txt')
         output_counts_path = os.path.join(most_recent_run, f'{video_name}_counts_output.txt') # overwrite the counts file
         line_crossings_path = os.path.join(most_recent_run, f'{video_name}_line_crossings.txt')
+
         # Check if the tracks file exists
         print(tracks_input_file)
         if os.path.exists(tracks_input_file):
@@ -546,7 +560,7 @@ def reprocess_video(filename):
                                     '--count_lines_file', 'coordinates.txt', 
                                     '--tracks_input_file', tracks_input_file,
                                     '--output_counts_file', output_counts_path,
-                                    '--line_crossings', line_crossings_path
+                                    '--line_crossings', line_crossings_path,
                                     ],
                                     # stdout=subprocess.PIPE,
                                     # stderr=subprocess.PIPE
@@ -863,9 +877,10 @@ def get_tracks(file_name):
         # put into numpy array
         # print(group)
         boxes = np.array(list(zip(group[2], group[3], group[4], group[5], group[7])))
+        class_ids = np.array(list(group[7]))
 
         # Assign this list to the corresponding track_id in the dictionary
-        bounding_boxes[track_id] = boxes
+        bounding_boxes[track_id] = (boxes, class_ids)
 
     # Display the resulting dictionary
     # print(bounding_boxes)
@@ -878,8 +893,15 @@ def save_middle_video_frame(file_path, save_path):
     cap = cv.VideoCapture(file_path)
 
     if not cap.isOpened():
-        print("Error: Could not open video.")
-        return
+        print("Could not open video. Looking for middle_frame.jpg")
+        try:
+            img = cv.imread(save_path, cv.IMREAD_COLOR)
+            height, width, channels = img.shape
+            resolution = (width, height)
+            return resolution
+        except Exception as e:
+            print("Could not read middle_frame.jpg")
+            print(f"Error: {e}")
     else:
         # Get the width and height of the video frames
         frame_width = int(cap.get(cv.CAP_PROP_FRAME_WIDTH))
@@ -995,6 +1017,7 @@ def get_track_data_plot():
         run_name = os.path.basename(most_recent_run)
         # Read the tracks.txt file and parse the data
         tracks_file_path = os.path.join(most_recent_run, f'{video_name}_tracks_output.txt')
+        print(f"get tracks filename: {tracks_file_path}")
         count_lines_file = "coordinates.txt"
         if os.path.exists(count_lines_file):
             count_lines = parse_count_lines_file(count_lines_file)
@@ -1016,8 +1039,12 @@ def get_track_data_plot():
             # Create subplots
             track_fig = make_subplots(rows=1, cols=1, subplot_titles=("10 frame smoothing"))
 
+            color_dict = {0: "Yellow", 1: "Red", 2: "Green", 3: "Blue"}
+
             for track_id in tracks.keys():
-                trace = tracks[track_id]
+                trace = tracks[track_id][0]
+                class_ids = tracks[track_id][1]
+                class_id = np.argmax(np.histogram(class_ids, [0, 1, 2, 3])[0])
                 if len(trace) != 0:
                     # annotate the center of the bottom line of the BBox, because that is intuitive
                     trace_center_x = trace[:,0] + trace[:,2] // 2
@@ -1070,7 +1097,19 @@ def get_track_data_plot():
                     #     ))
 
                     # Add smoothed path
-                    track_fig.add_trace(go.Scatter(x=trace_convolved_x, y=trace_convolved_y, mode='lines', name=f'Trace {track_id} smoothed'), row=1, col=1)
+                    track_fig.add_trace(
+                        go.Scatter(
+                            x=trace_convolved_x,
+                            y=trace_convolved_y,
+                            mode='lines',
+                            name=f'Trace {track_id} smoothed',
+                            opacity=0.2,
+                            marker=dict(
+                                color=color_dict[class_id],
+                            ),
+                        ),
+                        row=1, col=1
+                    )
                     # Add an arrow annotation to the end of each trace
                     # if len(trace_convolved_x) > 10:
                     #     fig.add_annotation(

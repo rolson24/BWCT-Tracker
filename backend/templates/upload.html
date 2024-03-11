@@ -48,7 +48,7 @@
         <div class="video-container" id="video-container">
             <video id="video-player" controls style="width: 100%; height: 100%;"></video>
             <canvas id="canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: auto;"></canvas>
-            <div id="loader" class="save_spinner" style="position:absolute ; top: 0; left: 0;display:none;"></div>
+            <!-- <div id="loader" class="save_spinner" style="position:absolute ; top: 0; left: 0;display:none;"></div> -->
 
         </div>
 
@@ -569,6 +569,8 @@
                 var fileName = $(this).val().split("\\").pop();
                 $(this).siblings('.custom-file-label').addClass("selected").html(fileName);
             });
+            var video_width;
+            var video_height;
 
             $('#video-upload-button').on('click', function(e) {
                 // Prevent the default form submission if the button is part of a form
@@ -597,6 +599,8 @@
                             $('#video-player').attr('src', `/stream_video`, 'type', 'video/mp4').css({ width: '100%', height: '100%' }).prop('controls', true).on('loadedmetadata', function () {
                                 var canvas = $('#canvas')[0];
                                 var ctx = canvas.getContext('2d');
+                                video_width = this.videoWidth;
+                                video_height = this.videoHeight;
                                 var aspectRatio = this.videoHeight / this.videoWidth;
                                 var canvasHeight = this.clientWidth * aspectRatio;
                                 console.log(`Canvas height: ${canvasHeight}`)
@@ -623,6 +627,14 @@
                 // Use a regular expression to extract the part after the last slash
                 return filePath.replace(/^.*[\\\/]/, '');
             }
+            const getMeta = (url) =>
+                new Promise((resolve, reject) => {
+                    const img = new Image();
+                    img.onload = () => resolve(img);
+                    img.onerror = (err) => reject(err);
+                    img.src = url;
+                });
+
 
             $('#raw-data-button').on('click', function(e) {
                 // Prevent the default form submission if the button is part of a form
@@ -652,17 +664,28 @@
                             image_name = `/static/outputs/${video_name}/run_1/middle_frame.jpg`
                             console.log(`image name: ${image_name}`)
 
+                            $('#video-player').css({ width: '100%', height: '100%' }).prop('controls', false).show();
+                            var videoPlayer = document.getElementById("video-player")
 
-                            $('#video-player').css({ width: '100%', height: '100%' }).prop('controls', false).on('loadedmetadata', function () {
+
+                            ;(async() => {
+                                const img = await getMeta(image_name);
+                                console.dir(img.naturalHeight + ' ' + img.naturalWidth);
+                                video_width = img.naturalWidth;
+                                video_height = img.naturalHeight;
+
                                 var canvas = $('#canvas')[0];
                                 var ctx = canvas.getContext('2d');
-                                var aspectRatio = this.videoHeight / this.videoWidth;
-                                var canvasHeight = this.clientWidth * aspectRatio;
+                                var aspectRatio = video_height / video_width;
+                                console.log(`Video Aspect Ratios: ${aspectRatio}`)
+                                var canvasHeight = videoPlayer.clientWidth * aspectRatio;
                                 console.log(`Canvas height: ${canvasHeight}`)
-                                var yOffset = (this.clientHeight - canvasHeight) / 2
+                                var yOffset = (videoPlayer.clientHeight - canvasHeight) / 2
                                 ctx.clearRect(0, 0, canvas.width, canvas.height);
-                                $('#canvas').css("top", yOffset).attr({ width: this.clientWidth, height: canvasHeight }).css('pointer-events', 'none').show();
-                            }).show();
+                                $('#canvas').css("top", yOffset).attr({ width: videoPlayer.clientWidth, height: canvasHeight }).css('pointer-events', 'none').show();
+                                console.log("setup canvas")
+                            })();
+
 
                             // Use the Fetch API to make a request to the file's URL
                             fetch(image_name)
@@ -670,7 +693,6 @@
                                     // Check if the file is accessible
                                     if(response.ok) {
                                         console.log('The file is accessible.');
-                                        var videoPlayer = document.getElementById("video-player")
                                         videoPlayer.poster = image_name
                                     } else {
                                         console.log('The file is not accessible.', response.statusText);
@@ -768,8 +790,8 @@
                         ctx.stroke();
                         var video = document.getElementById('video-player');
                         var canvas = document.getElementById('canvas');
-                        var scaleX = video.videoWidth / canvas.width;
-                        var scaleY = video.videoHeight / canvas.height;
+                        var scaleX = video_width / canvas.width;
+                        var scaleY = video_height / canvas.height;
                         // var scaleX = 1;
                         // var scaleY = 1;
                         console.log(`scaleX: ${scaleX}, scaleY: ${scaleY}`)
