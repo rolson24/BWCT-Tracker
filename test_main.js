@@ -135,7 +135,7 @@ async function getPlots(){
         }
         const plots_dir = await response.text();
         return plots_dir;
-    } catch {
+    } catch (error) {
         console.error("Failed to get plots data:", error);
         return null;
     }

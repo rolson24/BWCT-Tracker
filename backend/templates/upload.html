@@ -1126,6 +1126,7 @@
 
             $('#download-plots-button').on('click', function () {
                 window.electronAPI.savePlots();
+                $('#download-plots-button').prop('disabled', true);
 
             });
 
@@ -1145,6 +1146,11 @@
                 $('#processing-progress').css('width', msg.data + '%').attr('aria-valuenow', msg.data);
                 $('#estimated-time').text('Estimated time remaining: ' + msg.time)
             });
+            socket.on('plot-download-ready', function() {
+                console.log('Ready to download plots');
+                $('#download-plots-button').prop('disabled', false);
+
+            })
             var video_name;
             // Listen for the video_processed event
             socket.on('video_processed', function (msg) {

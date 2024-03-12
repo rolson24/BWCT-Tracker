@@ -1,4 +1,4 @@
-numpy
+numpy = 1.26.3
 opencv-python
 loguru
 scikit-image
@@ -24,9 +24,16 @@ termcolor
 gdown
 onnx
 onnxruntime
+onnxruntime-gpu
+supervision
+tensorflow
 roboflow
 torchreid
 ultralytics
 plotly
 pandas
+pillow
 faiss-gpu
+flask
+cupy = 13.0.0
+

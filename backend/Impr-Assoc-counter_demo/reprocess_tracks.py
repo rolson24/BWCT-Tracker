@@ -114,18 +114,31 @@ def count_lines_supervision(line_ends, bboxes, LINE_CROSSINGS_FILE):
     # print(dets)
 
 
+    ''' Update line counter '''
     # Need to write to a file that stores the counts in this format:
     # <frame_id>,<line number>,<class name>,<in/out>
     for i, line_zone in enumerate(line_zones):
         objects_in, objects_out = line_zone.trigger(dets)
         for obj in dets.class_id[np.isin(objects_in, True)]:
-            line_counts[i][CLASS_NAMES_DICT[obj]+"_in"] += 1
-            with open(LINE_CROSSINGS_FILE, 'a') as f:
-                f.write(f"{frame_ind},{i},{CLASS_NAMES_DICT[obj]},in\n")
+            classname = CLASS_NAMES_DICT[obj]
+            if classname == "Wheelchairs":
+              line_counts[i]["Pedestrians_in"] += 1
+              with open(LINE_CROSSINGS_FILE, 'a') as f:
+                f.write(f"{frame_ind},{i},Pedestrians,in\n")
+            else:
+              line_counts[i][classname+"_in"] += 1
+              with open(LINE_CROSSINGS_FILE, 'a') as f:
+                  f.write(f"{frame_ind},{i},{classname},in\n")
         for obj in dets.class_id[np.isin(objects_out, True)]:
-            line_counts[i][CLASS_NAMES_DICT[obj]+"_out"] += 1
-            with open(LINE_CROSSINGS_FILE, 'a') as f:
-                f.write(f"{frame_ind},{i},{CLASS_NAMES_DICT[obj]},out\n")
+            classname = CLASS_NAMES_DICT[obj]
+            if classname == "Wheelchairs":
+              line_counts[i]["Pedestrians_out"] += 1
+              with open(LINE_CROSSINGS_FILE, 'a') as f:
+                f.write(f"{frame_ind},{i},Pedestrians,out\n")
+            else:
+              line_counts[i][classname+"_out"] += 1
+              with open(LINE_CROSSINGS_FILE, 'a') as f:
+                  f.write(f"{frame_ind},{i},{classname},out\n")
     
     if j % 20 == 0:
       # logger.info('Processing track frame {}/{}'.format(j, num_frames))

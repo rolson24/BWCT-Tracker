@@ -32,6 +32,7 @@ from plotly.subplots import make_subplots
 import re
 
 import cv2 as cv
+from PIL import Image
 
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
@@ -72,6 +73,10 @@ video_path = None
 app.config['UPLOADED_VIDEOS_DEST'] = 'static/uploads'
 configure_uploads(app, videos)
 
+track_fig = None
+volume_fig = None
+crossings_fig = None
+counts_fig = None
 
 @app.route('/', methods=['GET', 'POST'])
 def upload():
@@ -880,7 +885,7 @@ def get_tracks(file_name):
         class_ids = np.array(list(group[7]))
 
         # Assign this list to the corresponding track_id in the dictionary
-        bounding_boxes[track_id] = (boxes, class_ids)
+        bounding_boxes[track_id] = boxes
 
     # Display the resulting dictionary
     # print(bounding_boxes)
@@ -1030,7 +1035,7 @@ def get_track_data_plot():
             saved_frame = f"{most_recent_run}/middle_frame.jpg"
             resolution = save_middle_video_frame(video_path, saved_frame)
             print(f"saved_frame {saved_frame}")
-            saved_frame = f"/static/outputs/{video_name}/{run_name}/middle_frame.jpg"
+            saved_frame = f"backend/static/outputs/{video_name}/{run_name}/middle_frame.jpg"
             # saved_frame = os.path.join(os.path.curdir, saved_frame)
             print(f"saved_frame frontend {saved_frame}")
             kernel_size = 10
@@ -1041,10 +1046,76 @@ def get_track_data_plot():
 
             color_dict = {0: "Yellow", 1: "Red", 2: "Green", 3: "Blue"}
 
-            for track_id in tracks.keys():
-                trace = tracks[track_id][0]
-                class_ids = tracks[track_id][1]
-                class_id = np.argmax(np.histogram(class_ids, [0, 1, 2, 3])[0])
+            # traces = [trace for trace in tracks.values() if len(trace) > 4]
+
+            # # Collect all end points from tracks
+            # end_points = np.array([
+            #     (trace[-1, 0] + trace[-1, 2] // 2, trace[-1, 1] + trace[-1, 3]) 
+            #     for trace in traces
+            # ])
+
+            # # max distance between two points in a cluster
+            # my_epsilon = 100
+            # my_min_samples = 2
+
+
+            # # Run DBSCAN clustering on the collected end points
+            # db = DBSCAN(eps=my_epsilon, min_samples=my_min_samples).fit(end_points)
+            # labels = db.labels_
+            # print(f"db scan labels: {labels}")
+
+            # # Create a dictionary to hold lines for each cluster
+            # clustered_lines = {label: [] for label in set(labels) if label != -1}
+
+            # # The labels array now holds the cluster ID for each point in all_points_array
+            # # Points with the same label belong to the same cluster
+            # # Points with the label -1 are considered noise and not part of any cluster
+
+            # # Add lines to their respective clusters based on labels
+            # for label, trace in zip(labels, traces):
+            #     if label != -1:
+            #         clustered_lines[label].append(trace)
+
+
+            # # Draw a smooth line for each cluster
+            # for cluster_id, lines in clustered_lines.items():
+            #     if not lines:  # Skip if there are no lines in the cluster
+            #         continue
+
+            #     # Collect all points from the traces in the cluster
+            #     all_x_points = []
+            #     all_y_points = []
+            #     for line in lines:
+            #         all_x_points.extend(line[:, 0] + line[:, 2] // 2)
+            #         all_y_points.extend(line[:, 1] + line[:, 3])
+
+            #     # # Interpolate a spline through the points
+            #     # tck, u = splprep([all_x_points, all_y_points], s=0)
+            #     # new_points = splev(u, tck)
+
+            #     # Add trace for the cluster
+            #     track_fig.add_trace(go.Scatter(
+            #         x=all_x_points,
+            #         y=all_y_points,
+            #         mode='lines',
+            #         line=dict(width=3),  # Adjust line thickness
+            #         name=f'Cluster {cluster_id}'
+            #     ))
+
+            max_tracks = 200
+
+            if len(tracks.keys()) > max_tracks:
+                step_size = math.floor(len(tracks.keys()) // max_tracks)
+            else:
+                step_size = 1
+
+            traces = [trace for trace in tracks.values() if len(trace) > 20]
+
+            
+            for i, trace in enumerate(traces):
+                # if i % step_size == 0:
+                # class_ids = tracks[track_id][1]
+                # class_id = np.argmax(np.histogram(class_ids, [0, 1, 2, 3])[0])
                 if len(trace) != 0:
                     # annotate the center of the bottom line of the BBox, because that is intuitive
                     trace_center_x = trace[:,0] + trace[:,2] // 2
@@ -1054,58 +1125,16 @@ def get_track_data_plot():
                     # Flip the y coords because images are index top to bottom
                     trace_convolved_y = trace_convolved_y
 
-                    # # Try to merge lines into clusters
-                    # # max difference between lines to be considered neighbors
-                    # my_epsilon = 100
-
-                    # # minimum number of lines to create a new cluster
-                    # my_min_samples = 3
-                    # # Get the end points of each track
-                    # end_points = np.array([
-                    #     (trace[-1, 0] + trace[-1, 2] // 2, trace[-1, 1] + trace[-1, 3]) 
-                    #     for trace in tracks.values() if len(trace) > 1
-                    # ])
-
-                    # # Run DBSCAN clustering on the collected end points
-                    # db = DBSCAN(eps=my_epsilon, min_samples=my_min_samples).fit(end_points)
-                    # labels = db.labels_
-
-                    # # Create a dictionary to hold lines for each cluster
-                    # clustered_lines = {label: [] for label in set(labels) if label != -1}
-
-                    # # Add lines to their respective clusters based on labels
-                    # for label, trace in zip(labels, tracks.values()):
-                    #     if label != -1:
-                    #         clustered_lines[label].append(trace)
-
-                    # # Draw a thicker line for each cluster
-                    # for cluster_id, lines in clustered_lines.items():
-                    #     if not lines:  # Skip if there are no lines in the cluster
-                    #         continue
-
-                    #     # Calculate the mean start and end points for the cluster
-                    #     mean_start = np.mean([[line[0, 0] + line[0, 2] // 2, line[0, 1] + line[0, 3]] for line in lines], axis=0)
-                    #     mean_end = np.mean([[line[-1, 0] + line[-1, 2] // 2, line[-1, 1] + line[-1, 3]] for line in lines], axis=0)
-                        
-                    #     # Add trace for the cluster
-                    #     fig.add_trace(go.Scatter(
-                    #         x=[mean_start[0], mean_end[0]], 
-                    #         y=[mean_start[1], mean_end[1]], 
-                    #         mode='lines',
-                    #         line=dict(width=3),  # Adjust line thickness
-                    #         name=f'Cluster {cluster_id}'
-                    #     ))
-
                     # Add smoothed path
                     track_fig.add_trace(
                         go.Scatter(
                             x=trace_convolved_x,
                             y=trace_convolved_y,
                             mode='lines',
-                            name=f'Trace {track_id} smoothed',
+                            name=f'Trace {i} smoothed',
                             opacity=0.2,
                             marker=dict(
-                                color=color_dict[class_id],
+                                color='red',
                             ),
                         ),
                         row=1, col=1
@@ -1135,19 +1164,29 @@ def get_track_data_plot():
             # plot_width = 800
             # plot_height = int(plot_width / aspect_ratio)
             # Set a background image
+            # track_fig.update_layout(
+            #     images=[
+            #         dict(
+            #             source=saved_frame,
+            #             xref="x", yref="y",  # Use "paper" to refer to the whole plotting area
+            #             x=0, y=1,  # These specify the position of the image (0,0 is bottom left, 1,1 is top right)
+            #             sizex=resolution[0], sizey=resolution[1],  # These specify the size of the image. 1,1 will cover the entire background
+            #             sizing="stretch",
+            #             opacity=1.0,  # Set the opacity of the image
+            #             layer="below"  # Ensure the image is below the plot
+            #         )
+            #     ]
+            # )
+            # Set the layout to include a background image
             track_fig.update_layout(
-                images=[
-                    dict(
-                        source=saved_frame,
-                        xref="x", yref="y",  # Use "paper" to refer to the whole plotting area
-                        x=0, y=1,  # These specify the position of the image (0,0 is bottom left, 1,1 is top right)
-                        sizex=resolution[0], sizey=resolution[1],  # These specify the size of the image. 1,1 will cover the entire background
-                        sizing="stretch",
-                        opacity=1.0,  # Set the opacity of the image
-                        layer="below"  # Ensure the image is below the plot
-                    )
-                ]
-            )
+                images=[go.layout.Image(
+                    source=Image.open(saved_frame),  # Path to your background image
+                    xref="x", yref="y", 
+                    x=0, y=1,
+                    sizex=resolution[0], sizey=resolution[1],  # These specify the size of the image. 1,1 will cover the entire background
+                    sizing="stretch",
+                    opacity=1.0,  # Adjust opacity if needed
+                    layer="below")])
 
             start_ind = 0
             end_ind = 1
@@ -1169,10 +1208,14 @@ def get_track_data_plot():
             return jsonify({'message': 'No tracks found for this video'}), 404
     else:
         return jsonify({'message': 'No runs found for the video'}),  404
+    
+def save_plots_as_image(figure, save_path):
+    figure.write_image(save_path)
 
 @app.route('/get_plots')
 def get_plots():
     global track_fig, counts_fig, crossings_fig, volume_fig
+    figures = [track_fig, counts_fig, crossings_fig, volume_fig]
     filename = os.path.split(file_paths[0])[1]
     video_path = file_paths[0]
     # Construct the path to the counts file
@@ -1193,16 +1236,20 @@ def get_plots():
         counts_image_path = os.path.join(plots_dir_path, f'{video_name}_counts.png')
         crossings_image_path = os.path.join(plots_dir_path, f'{video_name}_15_min.png')
         volume_image_path = os.path.join(plots_dir_path, f'{video_name}_person_volume.png')
-        try:
-            track_fig.write_image(tracks_image_path)
-            counts_fig.write_image(counts_image_path)
-            crossings_fig.write_image(crossings_image_path)
-            volume_fig.write_image(volume_image_path)
+        save_paths = [tracks_image_path, counts_image_path, crossings_image_path, volume_image_path]
 
-        except Exception as err:
-            print("no figures found")
-            print(f"Error: {err}")
-            return "Figures not found in the most recent run", 404
+        num_errors = 0
+
+        for i in range(len(figures)):
+            try:
+                save_plots_as_image(figures[i], save_paths[i])
+            except Exception as err:
+                print(f"figure {save_paths[i]} not found")
+                print(f"Error: {err}")
+                num_errors += 1
+        socketio.emit('plot-download-ready')
+        if num_errors == len(figures):
+            return "No figures found", 404
         return plots_dir_path
     else:
         return "No runs found for the video", 404
