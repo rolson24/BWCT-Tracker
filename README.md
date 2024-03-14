@@ -262,7 +262,28 @@ You can see our report here:
 
 > Follow the build instructions above to install the project.
 
-
+###  Train new YOLOv8 model
+> 1. Follow this Google Colab notebook to train a new YOLOv8 model: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1Mhtpc5kIbJU0WGojF5d9Xd8N0y4SJ5RF?usp=sharing)  
+> 2. Download the trained model weights from the Google Drive folder and place them in the `backend/tracking/models` directory  
+>> 2.5. (Optional) If you want the runtime to be fast and you have an NVIDIA GPU or an NVIDIA Jetson, run these commands to convert the model to a TensorRT model (first cd to the BWCT-Tracker repository and ensure you have tensorRT install):   
+>> A:  
+python3 backend/tracking/YOLOv8_TensorRT/export-det.py \
+--weights {path/to/weights_file} \
+--iou-thres 0.65 \
+--conf-thres 0.25 \
+--topk {num_of_classes_in_model} \
+--opset 17 \
+--sim \
+--input-shape 1 3 640 640 \
+--device cuda:0  
+B:  
+/usr/src/tensorrt/bin/trtexec \
+--onnx={path/to/onnx_export_output} \
+--saveEngine=yolov8s.engine \
+--fp16  
+C:  
+Move the ".engine" model to the models folder  
+> 3. Update the `model_path` variable in `backend/tracking/BWCT_app.py` with the path to the new model weights
 
 ---
 
