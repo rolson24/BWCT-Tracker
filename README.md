@@ -329,6 +329,8 @@ This project is protected under the [AGPL-3.0](https://opensource.org/license/ag
 - Daniel Stadler and Jurgen Beyerer for their [paper](https://openaccess.thecvf.com/content/CVPR2023W/E2EAD/papers/Stadler_An_Improved_Association_Pipeline_for_Multi-Person_Tracking_CVPRW_2023_paper.pdf) on Improved Association Tracker
 - Hyeonchul Jung, Seokjun Kang, Takgen Kim, and HyeongKi Kim for their [paper](https://openaccess.thecvf.com/content/WACV2024/papers/Jung_ConfTrack_Kalman_Filter-Based_Multi-Person_Tracking_by_Utilizing_Confidence_Score_of_WACV_2024_paper.pdf) on ConfTrack. (See also their implementation [here](https://github.com/Hyonchori/ConfTrack_WACV2024))
 - He, Lingxiao and Liao, Xingyu and Liu, Wu and Liu, Xinchen and Cheng, Peng and Mei, Tao for developing FastReID. (See also their implementation [here](https://github.com/JDAI-CV/fast-reid))
+- Adrian Rosebrock, Kumar Ujjawal and Adam Spannbauer for their implementiation of fast color transfer. (See also their implementation [here](https://github.com/jrosebr1/color_transfer))
+- The [YOLOv8-TensorRT](https://github.com/triple-Mu/YOLOv8-TensorRT) team for their wonderful work making YOLOv8 fast with tensorRT.
 - The [Roboflow Supervision](https://roboflow.com/) team for their amazing work developing the [Supervision](https://github.com/roboflow-ai/supervision) tool.
 
 [**Return**](#-overview)
