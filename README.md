@@ -84,6 +84,28 @@ This repository contains code for an Electron app that processes videos from tra
     ├── backend
     │   ├── BWCT_app.py
     │   ├── Impr-Assoc-counter_demo
+    │   │   ├── ConfTrack
+    │   │   │   ├── basetrack.py
+    │   │   │   ├── ConfTrack.py
+    │   │   │   ├── kalman_filter.py
+    │   │   │   └── matching.py
+    │   │   ├── Impr_Assoc_Track
+    │   │   │   ├── basetrack.py
+    │   │   │   ├── Impr_Assoc_Track.py
+    │   │   │   ├── interpolation.py
+    │   │   │   ├── kalman_filter.py
+    │   │   │   └── matching.py
+    │   │   ├── LSTMTrack
+    │   │   │   ├── LSTM_predictor.py
+    │   │   │   └── LSTMTrack.py
+    │   │   ├── YOLOv8_TensorRT
+    │   │   ├── color_transfer_cpu.py
+    │   │   ├── color_transfer_gpu.py
+    │   │   ├── example_count_lines.txt
+    │   │   ├── reprocess_tracks.py
+    │   │   ├── requirements.txt
+    │   │   ├── setup.py
+    │   │   └── track.py
     │   └── templates
     ├── index.html
     ├── main.js
