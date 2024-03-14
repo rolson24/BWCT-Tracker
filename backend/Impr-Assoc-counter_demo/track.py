@@ -221,7 +221,11 @@ if __name__ == "__main__":
       with open(status_file_path, 'w') as status_file:
           json.dump({'status': status}, status_file)
 
-  SOURCE_VIDEO_PATH = args.source_video_path
+    """
+  Parse command line arguments to set source video path, output directory, 
+  and generate output file paths for annotated, recolored, and tracked videos.
+  """
+SOURCE_VIDEO_PATH = args.source_video_path
   SOURCE_VIDEO_NAME = osp.basename(SOURCE_VIDEO_PATH).split('.')[0]
   SOURCE_VIDEO_EXT = osp.basename(SOURCE_VIDEO_PATH).split('.')[1]
   if SOURCE_VIDEO_EXT == "avi":
@@ -642,8 +646,15 @@ if __name__ == "__main__":
 
 
     ''' Update line counter '''
-    # Need to write to a file that stores the counts in this format:
-    # <frame_id>,<line number>,<class name>,<in/out>
+
+    """Iterates through each line zone and checks which objects crossed the line.
+    
+    For each object that crossed into the line, increments the in count for that object's
+    class name. Similarly, increments the out count for objects crossing out.
+    
+    Writes the crossing events to the line crossings file in the format:
+    <frame_id>,<line_number>,<class_name>,<in/out>
+    """
     for i, line_zone in enumerate(line_zones):
         objects_in, objects_out = line_zone.trigger(detections)
         for obj in detections.class_id[np.isin(objects_in, True)]:

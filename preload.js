@@ -9,3 +9,4 @@ contextBridge.exposeInMainWorld('electronAPI', {
   savePlots: () => ipcRenderer.send('save-plots-folder'),
 });
 
+
