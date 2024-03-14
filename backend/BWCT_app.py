@@ -431,13 +431,13 @@ def process_video(filename, save_video):
     save_processing_status(filename, 'processing')
     # Call your track.py script here
     print("Start processing video")
-    tracker_base_path = "backend/Impr-Assoc-counter_demo"
+    tracker_base_path = "backend/tracking"
     script_path = f"{tracker_base_path}/track.py"
     output_path = "backend/static/outputs/"
     model_path = f"{tracker_base_path}/models/yolov8s-2024-02-16-best_fp16_trt.engine"
     cc_source_path = f"{tracker_base_path}/reference-image-test.jpg"
     day_night_path = "static/day_night.csv"
-    # model_path = "../Impr-Assoc-counter_demo/models/yolov8s-2024-02-14-best_fp16_trt.engine"
+    # model_path = "../tracking/models/yolov8s-2024-02-14-best_fp16_trt.engine"
 
     # tracker = "Impr_Assoc"
     tracker = "ConfTrack"
@@ -539,7 +539,7 @@ def reprocess():
 def reprocess_video(filename):
     # Run the different script on the output_tracks.csv file\
     print(f"reprocess filename {filename}")
-    tracker_base_path = "backend/Impr-Assoc-counter_demo"
+    tracker_base_path = "backend/tracking"
     reprocess_script_path = f"{tracker_base_path}/reprocess_tracks.py"
     base_path = "backend/static/outputs/"
     video_name = filename.split('.')[0]

@@ -94,8 +94,8 @@ def make_parser():
 
   # ReID
   parser.add_argument("--with_reid", dest="with_reid", action="store_true", help="use Re-ID flag.")
-  parser.add_argument("--fast_reid_config", type=str, default="/content/drive/MyDrive/BWCT-tracker/Impr-Assoc-counter_demo/fast_reid/configs/MOT17/sbs_S50.yml", help="reid config file path")
-  parser.add_argument("--fast_reid_weights", type=str, default=r"/content/drive/MyDrive/BWCT-tracker/Impr-Assoc-counter_demo/models/mot17_sbs_S50.pth", help="reid config file path")
+  parser.add_argument("--fast_reid_config", type=str, default="/content/drive/MyDrive/BWCT-tracker/tracking/fast_reid/configs/MOT17/sbs_S50.yml", help="reid config file path")
+  parser.add_argument("--fast_reid_weights", type=str, default=r"/content/drive/MyDrive/BWCT-tracker/tracking/models/mot17_sbs_S50.pth", help="reid config file path")
   parser.add_argument('--proximity_thresh', type=float, default=0.1, help='threshold for rejecting low overlap reid matches')
   parser.add_argument('--appearance_thresh', type=float, default=0.25, help='threshold for rejecting low appearance similarity reid matches')
 
@@ -409,12 +409,12 @@ SOURCE_VIDEO_PATH = args.source_video_path
   elif OBJECT_TRACKER == "LSTMTrack":
     from LSTMTrack.LSTMTrack import STrack
     # currently load model 14 and then load model 15 bbox weights, need to fix
-    LSTM_model = tf.keras.models.load_model("/home/object_track_count_analysis/BWCT-tracker/Impr-Assoc-counter_demo/models/LSTM_model_14_and_15_bb")
+    LSTM_model = tf.keras.models.load_model("/home/object_track_count_analysis/BWCT-tracker/tracking/models/LSTM_model_14_and_15_bb")
     # LSTM_model.load_weights("./models/model_15_bb_saved_weights.h5")
     if args.default_parameters:
       STrack.shared_LSTM_predictor = LSTM_predictor(LSTM_model)
       Tracker = LSTM_Track(model=LSTM_model,
-                          torchreid_model=r"/home/object_track_count_analysis/BWCT-tracker/Impr-Assoc-counter_demo/models/osnet_ms_d_c.pth.tar", # need to move to folder
+                          torchreid_model=r"/home/object_track_count_analysis/BWCT-tracker/tracking/models/osnet_ms_d_c.pth.tar", # need to move to folder
                           frame_rate=video_info.fps)
     else:
       STrack.shared_LSTM_predictor = LSTM_predictor(LSTM_model)
@@ -423,7 +423,7 @@ SOURCE_VIDEO_PATH = args.source_video_path
                           track_thresh=args.track_low_thresh,
                           track_buffer=args.track_buffer,
                           match_thresh=args.track_match_thresh,
-                          torchreid_model=r"/home/object_track_count_analysis/BWCT-tracker/Impr-Assoc-counter_demo/models/osnet_ms_d_c.pth.tar", # need to move to folder
+                          torchreid_model=r"/home/object_track_count_analysis/BWCT-tracker/tracking/models/osnet_ms_d_c.pth.tar", # need to move to folder
                           frame_rate=video_info.fps)
   elif OBJECT_TRACKER == "BYTETrack":
     if args.default_parameters:
