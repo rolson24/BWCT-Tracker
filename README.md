@@ -5,7 +5,7 @@
     <h1 align="center"></h1>
 </p>
 <p align="center">
-    <em>Using Computer Vision to count and analyze how vulneralble road users use streets so that local governments have easy access to data for justifying investment in pedestrian and bike infrastructure.</em>
+    <em>Using Computer Vision to count and analyze how vulnerable road users use streets so that local governments have easy access to data for justifying investment in pedestrian and bike infrastructure.</em>
 </p>
 <p align="center">
 	<!-- local repository, no metadata badges. -->
