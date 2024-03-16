@@ -258,7 +258,8 @@ You can see our report [here](https://docs.google.com/document/d/1ou7F_Dk361bpQn
 >> ```console
 >> $ pip install -r requirements.txt
 >> ```  
->> 3.b Install onnx for your system. Follow these [instructions](https://pypi.org/project/onnx/).
+>> 3.b Install onnx for your system. Follow these [instructions](https://pypi.org/project/onnx/).  
+>>
 >> 3.c Install the correct requirements for your gpu:
 >>> If you have an NVIDIA gpu, you can leave the requirements file the same.  
 >>>
@@ -277,6 +278,11 @@ You can see our report [here](https://docs.google.com/document/d/1ou7F_Dk361bpQn
 >> ```console
 >> $ npm install -g electron
 >> ```  
+>> 5. Start app:
+>> ```console
+>> $ cd path/to/BWCT-Track
+>> $ npm start
+>> ```
 
 <h4>For Nvidia Jeton</h4>  
 
