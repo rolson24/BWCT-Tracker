@@ -19,6 +19,7 @@ backend/tracking/videos/*
 backend/tracking/.ipynb_checkpoints/
 backend/tracking/ConfTrack/.ipynb_checkpoints/
 backend/tracking/LSTMTrack/.ipynb_checkpoints/
+backend/tracking/tests
 backend/static/uploads
 backend/static/outputs
 coordinates.txt
@@ -35,4 +36,5 @@ backend/Impr_Assoc-counter_demo/fast_reid
 *.wsuo
 *.VC.db
 *workspaceFile*
-
+*.DS_Store
+index.html
