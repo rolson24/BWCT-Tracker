@@ -2,7 +2,6 @@ node_modules
 *.mp4
 backend/tracking/__pycache__/*
 backend/tracking/*/__pycache__/*
-backend/tracking/models/*
 backend/tracking/Impr_Assoc_Track/__pycache__/*
 backend/tracking/Impr_Assoc_Track/__pycache__/__pycache__/*
 input_videos/*
@@ -20,7 +19,8 @@ backend/tracking/videos/*
 backend/tracking/.ipynb_checkpoints/
 backend/tracking/ConfTrack/.ipynb_checkpoints/
 backend/tracking/LSTMTrack/.ipynb_checkpoints/
-backend/static/*
+backend/static/uploads
+backend/static/outputs
 coordinates.txt
 backend/line_crossings.txt
 backend/track_logs.txt
@@ -29,4 +29,10 @@ track_logs.txt
 .aider*
 cache*
 backend/Impr_Assoc-counter_demo/fast_reid
+*.sqlite
+*.json
+*.vsidx
+*.wsuo
+*.VC.db
+*workspaceFile*
 

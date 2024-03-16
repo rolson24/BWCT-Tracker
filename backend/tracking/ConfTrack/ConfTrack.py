@@ -9,7 +9,6 @@ from ConfTrack.basetrack import BaseTrack, TrackState
 from ConfTrack.kalman_filter import KalmanFilter
 from supervision.detection.core import Detections
 
-from fast_reid.fast_reid_interfece import FastReIDInterface
 
 
 class STrack(BaseTrack):
@@ -296,6 +295,8 @@ class ConfTrack:
         self.with_reid = with_reid
 
         if with_reid:
+            from fast_reid.fast_reid_interfece import FastReIDInterface
+
             self.encoder = FastReIDInterface(fast_reid_config, fast_reid_weights, device)
 
         # self.gmc = GMC(method=args.cmc_method, verbose=[args.name, args.ablation])

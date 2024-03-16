@@ -251,10 +251,30 @@ You can see our report here:
 > $ cd 
 > ```
 >
-> 3. Install the dependencies:
-> ```console
-> $ pip install -r requirements.txt
-> ```
+> 3. Install the dependencies:  
+>> 3.a
+>> ```console
+>> $ pip install -r requirements.txt
+>> ```  
+>> 3.b Install onnx for your system. Follow these [instructions](https://pypi.org/project/onnx/).
+>> 3.c Install the correct requirements for your gpu:
+>>> If you have an NVIDIA gpu, you can leave the requirements file the same.  
+>>>
+>>> If no NVIDIA gpu, then comment out cupy, faiss-gpu, and onnxruntime-gpu from requirements.txt also change BWCT_app.py to set device to "cpu"  
+>>>
+>>> If you have an amd gpu, install [onnxruntime-directml](https://onnxruntime.ai/docs/execution-providers/DirectML-ExecutionProvider.html) (First try pip install onnxruntime-directml, and if that doesn't work, then try building from [source](https://onnxruntime.ai/docs/execution-providers/DirectML-ExecutionProvider.html).)
+>
+> Depends on FFMPEG
+>
+> 4. Install electron:
+>
+>> First install node.js:
+>> [Instructions](https://nodejs.org/en/download)  
+>>
+>> Now install electron:
+>> ```console
+>> $ npm install -g electron
+>> ```
 
 ###  Usage
 

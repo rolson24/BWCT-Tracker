@@ -6,6 +6,7 @@ from flask_uploads import UploadSet, configure_uploads, ALL
 from flask import Response, stream_with_context
 from flask_socketio import SocketIO
 import zipfile
+import logging
 
 import atexit
 
@@ -59,8 +60,9 @@ def start_file_watching(path_to_watch, callback):
     return observer
 
 def handle_file_change(file_path):
-    print(f"File changed: {file_path}")
+    app.logger.debug(f"File changed: {file_path}")
     # Implement your handling logic here
+
 
 
 app = Flask(__name__)
@@ -72,6 +74,8 @@ video_path = None
 
 app.config['UPLOADED_VIDEOS_DEST'] = 'static/uploads'
 configure_uploads(app, videos)
+
+
 
 track_fig = None
 volume_fig = None
@@ -89,12 +93,12 @@ def upload():
             if not os.path.exists(video_path):
                 video.save(video_path)
             # os.system(f"ffmpeg -i {video_path} -c:v libx264 -preset veryfast -crf 23 {app.config['UPLOADED_VIDEOS_DEST']}/{filename.split('.')[0]}.mp4")
-            if exists('coordinates.txt'):
-                remove('coordinates.txt')
+            if exists('backend/coordinates.txt'):
+                remove('backend/coordinates.txt')
             return jsonify({'message': 'Video uploaded', 'filename': filename})
         return jsonify({'message': 'No video provided'}), 400
     else:
-        print("render template")
+        app.logger.debug("render template")
         return render_template('upload.html')  # replace 'index.html' with your actual template
     
 @app.route('/health')
@@ -105,31 +109,32 @@ def health_check():
 def receive_file_paths():
     global file_paths
     data = request.get_json()
-    print(data)
+    app.logger.debug(data)
     file_paths = data['filenames']
-    print(file_paths)
-    if exists('coordinates.txt'):
-        remove('coordinates.txt')
+    app.logger.debug(file_paths)
+    if exists('backend/coordinates.txt'):
+        remove('backend/coordinates.txt')
     # Process the file paths as needed here
-    for path in file_paths:
-        observer = start_file_watching(path, handle_file_change)
-    return jsonify({'message': 'Received file paths successfully'})
+    # for path in file_paths:
+    #     observer = start_file_watching(path, handle_file_change)
+    app.logger.debug("got file paths")
+    return jsonify({'message': f'Received file paths successfully: {file_paths}'})
 
 @app.route('/receive-raw-tracks-file-path', methods=['POST'])
 def receive_raw_tracks_file_path():
     global file_paths
     data = request.get_json()
-    print(data)
+    app.logger.debug(data)
     file_paths = data['filenames']
-    print(file_paths)
-    if exists('coordinates.txt'):
-        remove('coordinates.txt')
+    app.logger.debug(file_paths)
+    if exists('backend/coordinates.txt'):
+        remove('backend/coordinates.txt')
     # Process the file paths as needed here
     
     zip_file = file_paths[0]
 
     video_name = os.path.basename(zip_file).split('.')[0]
-    print(f"zip file name: {video_name}")
+    app.logger.debug(f"zip file name: {video_name}")
     # base_path = os.path.join(base_path, video_name)
     # run_folders = glob.glob(os.path.join(base_path, 'run_*'))
     # # Sort the folders by creation time and get the most recent one
@@ -175,7 +180,7 @@ def upload_day_night():
             return jsonify({'message': 'File uploaded', 'filename': filename})
         return jsonify({'message': 'No file provided'}), 400
     else:
-        print("render template")
+        app.logger.debug("render template")
         return render_template('upload.html')  # replace 'index.html' with your actual template
     
 
@@ -187,23 +192,52 @@ def stream_video():
         return "Filename not provided", 400
     # filename = os.path.join(app.config['UPLOADED_VIDEOS_DEST'], filename)
 
+    app.logger.debug(f"filename to reencode: {filename}")
     def generate():
         cmd = [
             'ffmpeg',
             '-i', filename,  # Use the dynamically provided filename
+            '-loop', '1',
             '-f', 'mp4',
             '-vcodec', 'libx264',
             '-preset', 'veryfast',
-            '-movflags', 'frag_keyframe+empty_moov',
-            '-'
+            '-movflags', '+frag_keyframe+empty_moov',
+            '-',
         ]
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        while True:
-            data = proc.stdout.read(4096)
-            if not data:
-                break
-            yield data
-        proc.wait()
+        app.logger.debug(f"cmd: {cmd}")
+        try:
+            if os.name == 'nt':
+                app.logger.debug("On windows")
+                proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, shell=True)
+            else:
+                proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+            app.logger.debug(f"Started FFMPEG")
+            # i = 0
+            # stdout, stderr = proc.communicate()
+            # app.logger.debug(f"FFmpeg error: {stderr.decode()}")
+            # app.logger.debug(f"FFmpeg output: {stdout}")
+
+            while True:
+                data = proc.stdout.read(512)
+                # proc.stderr.flush()
+            
+                if not data:
+                    app.logger.debug("Done with video.")
+                    break
+                yield data
+                # err = proc.stderr.read(1024).decode()
+                # app.logger.debug(f"{err}")
+                # i += 1
+                
+            stdout, stderr = proc.communicate()
+            app.logger.debug(f"FFmpeg error: {stderr.decode()}")
+
+            if proc.returncode != 0:
+                app.logger.debug(f"FFmpeg error: {stderr.decode()}")
+            proc.wait()
+
+        except Exception as e:
+            app.logger.debug("Error executing FFmpeg:", str(e))
 
     return Response(generate(), mimetype='video/mp4')
 
@@ -236,7 +270,7 @@ def get_raw_tracks():
     video_name = filename.split('.')[0]
     base_name = 'backend/static/outputs'
     base_path = os.path.join(base_name, video_name)
-    print(base_path)
+    app.logger.debug(base_path)
     run_folders = glob.glob(os.path.join(base_path, 'run_*'))
     # Sort the folders by creation time and get the most recent one
     run_folders.sort(key=os.path.getctime, reverse=True)
@@ -369,21 +403,22 @@ def uploaded_file(filename):
 def coordinates():
     line = request.form.get('line')
     if line:
-        with open('coordinates.txt', 'a') as f:
+        with open('backend/coordinates.txt', 'a') as f:
             f.write(line + '\n')
+            app.logger.debug("save coords")
         return jsonify({'message': 'Coordinates recorded'})
     return jsonify({'message': 'No coordinates provided'}), 400
 
 @app.route('/clear_lines', methods=['POST'])
 def clear_lines():
-    if exists('coordinates.txt'):
-        remove('coordinates.txt')
+    if exists('backend/coordinates.txt'):
+        remove('backend/coordinates.txt')
     return jsonify({'message': 'Lines cleared'})
 
 def seconds_to_hms(seconds):
     if seconds == None:
         return "infinite"
-    else:
+    else: 
         hours = int(seconds //  3600)
         minutes = int((seconds %  3600) //  60)
         seconds = int(seconds %  60)
@@ -412,8 +447,8 @@ def process():
     filename = file_paths[0]
 
 
-    print("Received filename:", filename)
-    print("Save video option:", save_video)
+    app.logger.debug(f"Received filename:{filename}")
+    app.logger.debug(f"Save video option:{save_video}")
 
     if filename:
         # Pass both filename and save_video to your processing function
@@ -430,11 +465,11 @@ def save_processing_status(filename, status):
 def process_video(filename, save_video):
     save_processing_status(filename, 'processing')
     # Call your track.py script here
-    print("Start processing video")
+    app.logger.debug("Start processing video")
     tracker_base_path = "backend/tracking"
     script_path = f"{tracker_base_path}/track.py"
     output_path = "backend/static/outputs/"
-    model_path = f"{tracker_base_path}/models/yolov8s-2024-02-16-best_fp16_trt.engine"
+    model_path = f"{tracker_base_path}/models/best.onnx"
     cc_source_path = f"{tracker_base_path}/reference-image-test.jpg"
     day_night_path = "static/day_night.csv"
     # model_path = "../tracking/models/yolov8s-2024-02-14-best_fp16_trt.engine"
@@ -449,16 +484,17 @@ def process_video(filename, save_video):
                 [
                     "python", 
                     # "-m", "cProfile",
-                    # "-s", "cumtime",
+                    # "-s", "cumtime", 
                     script_path,
                     "--source_video_path", video_path,
                     "--output_dir", output_path,
-                    "-f", "coordinates.txt",
+                    "-f", "backend/coordinates.txt",
                     "-c", model_path,
                     "--save-frames",
                     # "--color_calib_enable",
                     "--color_source_path", cc_source_path,
                     "--color_calib_device", "cpu",
+                    "--device", "cpu",
                     # "--day_night_switch_file", day_night_path,
                     "--object_tracker", tracker
                 ],
@@ -474,11 +510,12 @@ def process_video(filename, save_video):
                     script_path,
                     "--source_video_path", video_path,
                     "--output_dir", output_path,
-                    "-f", "coordinates.txt",
+                    "-f", "backend/coordinates.txt",
                     "-c", model_path,
                     # "--color_calib_enable",
                     "--color_source_path", cc_source_path,
                     "--color_calib_device", "cpu",
+                    "--device", "cpu",
                     # "--day_night_switch_file", day_night_path,
                     "--object_tracker", tracker
 
@@ -493,13 +530,14 @@ def process_video(filename, save_video):
                 with open('progress.txt', 'r') as f:
                     progress = float(f.read().strip())
                     socketio.emit('progress', {'data': progress, 'time': calculate_estimated_time_remaining(progress, processing_seconds)})
-                    print(f"Progress: {progress}")
+                    app.logger.debug(f"Progress: {progress}")
             except FileNotFoundError:
-                print("File not found")
+                app.logger.debug("File not found")
                 pass  # File not found, continue waiting
             except ValueError:
-                print("No valid  progress num")
+                app.logger.debug("No valid  progress num")
                 pass
+
 
             time.sleep(1)  # Wait for a short period before checking again
             processing_seconds += 1
@@ -507,12 +545,12 @@ def process_video(filename, save_video):
             os.remove('progress.txt')
         # stderr = process.stderr.read().decode('utf-8')
         # if stderr:
-        #     print(f"Error: {stderr}")
+        #     app.logger.debug(f"Error: {stderr}")
         # After the subprocess has finished and the progress file has been deleted
         socketio.emit('video_processed', {'filename': filename})   
         save_processing_status(filename, 'finished')
     except Exception as e:
-        print(f"Error: {e}")
+        app.logger.debug(f"Error: {e}")
         save_processing_status(filename, 'error')
 
 @app.route('/processing_status/<filename>')
@@ -528,7 +566,7 @@ def processing_status(filename):
 @app.route('/reprocess', methods=['POST'])
 def reprocess():
     # data = request.get_json()
-    # print("Received data:", data)  # Add this line to log the received data
+    # app.logger.debug(f"Received data:{data}")  # Add this line to log the received data
     # filename = data.get('filename')
     filename = os.path.split(file_paths[0])[1]
     if filename:
@@ -538,7 +576,7 @@ def reprocess():
 
 def reprocess_video(filename):
     # Run the different script on the output_tracks.csv file\
-    print(f"reprocess filename {filename}")
+    app.logger.debug(f"reprocess filename {filename}")
     tracker_base_path = "backend/tracking"
     reprocess_script_path = f"{tracker_base_path}/reprocess_tracks.py"
     base_path = "backend/static/outputs/"
@@ -557,12 +595,12 @@ def reprocess_video(filename):
         line_crossings_path = os.path.join(most_recent_run, f'{video_name}_line_crossings.txt')
 
         # Check if the tracks file exists
-        print(tracks_input_file)
+        app.logger.debug(tracks_input_file)
         if os.path.exists(tracks_input_file):
             try:
                     # Call the reprocess script
                 process = subprocess.Popen(['python3', reprocess_script_path,
-                                    '--count_lines_file', 'coordinates.txt', 
+                                    '--count_lines_file', 'backend/coordinates.txt', 
                                     '--tracks_input_file', tracks_input_file,
                                     '--output_counts_file', output_counts_path,
                                     '--line_crossings', line_crossings_path,
@@ -575,17 +613,17 @@ def reprocess_video(filename):
                 processing_seconds = 0
 
                 while process.poll() is None:
-                    # print("Waiting for progress")
+                    # app.logger.debug("Waiting for progress")
                     try:
                         with open('progress.txt', 'r') as f:
                             progress = float(f.read().strip())
                             socketio.emit('progress', {'data': progress, 'time': calculate_estimated_time_remaining(progress, processing_seconds)})
-                            print(f"Progress: {progress}")
+                            app.logger.debug(f"Progress: {progress}")
                     except FileNotFoundError:
-                        print("Progress file not found")
+                        app.logger.debug("Progress file not found")
                         pass  # File not found, continue waiting
                     except ValueError:
-                        print("No valid progress num")
+                        app.logger.debug("No valid progress num")
                         pass
                     # Read from stdout and stderr
                     # stdout = process.stdout.readline().decode('utf-8')
@@ -593,9 +631,9 @@ def reprocess_video(filename):
 
                     # # Print to server logs
                     # if stdout:
-                    #     print(f"STDOUT: {stdout}")
+                    #     app.logger.debug(f"STDOUT: {stdout}")
                     # if stderr:
-                    #     print(f"STDERR: {stderr}")
+                    #     app.logger.debug(f"STDERR: {stderr}")
 
                     time.sleep(1)  # Wait for a short period before checking again
                     processing_seconds += 1
@@ -605,13 +643,13 @@ def reprocess_video(filename):
                     os.remove('progress.txt')
                 # stderr = process.stderr.read().decode('utf-8')
                 # if stderr:
-                #     print(f"Error: {stderr}")
+                #     app.logger.debug(f"Error: {stderr}")
                 # After the subprocess has finished and the progress file has been deleted
                 socketio.emit('video_processed', {'filename': filename})   
             except Exception as e:
-                print(f"Error: {e}")
+                app.logger.debug(f"Error: {e}")
         else:  
-            print("Tracks file not found in the most recent run")
+            app.logger.debug("Tracks file not found in the most recent run")
 
 
 @app.route('/get_counts', methods=['GET'])
@@ -621,7 +659,7 @@ def get_counts():
     # Construct the path to the counts file
     video_name = filename.split('.')[0]
     base_path = os.path.join('backend/static/outputs', video_name)
-    print(base_path)
+    app.logger.debug(base_path)
     run_folders = glob.glob(os.path.join(base_path, 'run_*'))
     # Sort the folders by creation time and get the most recent one
     run_folders.sort(key=os.path.getctime, reverse=True)
@@ -649,13 +687,13 @@ def get_counts():
             for line in lines:
                 parts = line.split('\n')
                 line_name = parts[0]
-                print('Line:', line_name)
-                print('Parts:', parts)
+                app.logger.debug('Line:', line_name)
+                app.logger.debug('Parts:', parts)
 
                 for part in parts:
-                    print('Part:', part)
+                    app.logger.debug('Part:', part)
                     class_parts = re.split(r'[\s,]+', part)  # This splits on whitespace, which should work similarly to the regex used in JS
-                    print('Class parts:', class_parts)
+                    app.logger.debug('Class parts:', class_parts)
                     if class_parts[0] == 'line':
                         current_line = class_parts[1]
                     elif class_parts[0] == 'Average' and class_parts[1] == 'FPS:':
@@ -688,7 +726,7 @@ def get_counts():
                 
                 trace['x'].append(count['line'])
                 trace['y'].append(int(count['count']))
-                print(trace)
+                app.logger.debug(trace)
 
             # Creating the layout for the Plotly graph
             layout = {
@@ -697,7 +735,7 @@ def get_counts():
                 'yaxis': {'title': 'Count'},
                 'barmode': 'group'
             }
-            print(f"graph data: {graph_data}")
+            app.logger.debug(f"graph data: {graph_data}")
             # Creating the Plotly graph
             counts_fig = go.Figure(data=[go.Bar(name=trace['name'], x=trace['x'], y=trace['y']) for trace in graph_data], layout=layout)
             counts_fig.update_layout(title='Counts by Line', xaxis_title='Line', yaxis_title='Count', barmode='group')
@@ -721,7 +759,7 @@ def get_crossings_data():
     # Construct the path to the counts file
     video_name = filename.split('.')[0]
     base_path = os.path.join('backend/static/outputs', video_name)
-    print(base_path)
+    app.logger.debug(base_path)
     run_folders = glob.glob(os.path.join(base_path, 'run_*'))
     # Sort the folders by creation time and get the most recent one
     run_folders.sort(key=os.path.getctime, reverse=True)
@@ -812,7 +850,7 @@ def get_person_volume():
     # Construct the path to the counts file
     video_name = filename.split('.')[0]
     base_path = os.path.join('backend/static/outputs', video_name)
-    print(base_path)
+    app.logger.debug(base_path)
     run_folders = glob.glob(os.path.join(base_path, 'run_*'))
     # Sort the folders by creation time and get the most recent one
     run_folders.sort(key=os.path.getctime, reverse=True)
@@ -871,7 +909,7 @@ def get_tracks(file_name):
     frame_index = 1
     # train_labels_1 is a pandas dataframe with columns: frame, id, bb_left, bb_top, bb_width, bb_height, conf, class_id, -1, -1
     track_df = track_df.sort_values([1, 0]) # sort by id first then frame second
-    print(track_df.head())
+    app.logger.debug(track_df.head())
 
     # Initialize an empty dictionary
     bounding_boxes = {}
@@ -880,7 +918,7 @@ def get_tracks(file_name):
     for track_id, group in track_df.groupby(1):
         # Create a list of tuples for the bounding box coordinates
         # put into numpy array
-        # print(group)
+        # app.logger.debug(group)
         boxes = np.array(list(zip(group[2], group[3], group[4], group[5], group[7])))
         class_ids = np.array(list(group[7]))
 
@@ -888,7 +926,7 @@ def get_tracks(file_name):
         bounding_boxes[track_id] = boxes
 
     # Display the resulting dictionary
-    # print(bounding_boxes)
+    # app.logger.debug(bounding_boxes)
     return bounding_boxes
 
 def save_middle_video_frame(file_path, save_path):
@@ -898,15 +936,15 @@ def save_middle_video_frame(file_path, save_path):
     cap = cv.VideoCapture(file_path)
 
     if not cap.isOpened():
-        print("Could not open video. Looking for middle_frame.jpg")
+        app.logger.debug("Could not open video. Looking for middle_frame.jpg")
         try:
             img = cv.imread(save_path, cv.IMREAD_COLOR)
             height, width, channels = img.shape
             resolution = (width, height)
             return resolution
         except Exception as e:
-            print("Could not read middle_frame.jpg")
-            print(f"Error: {e}")
+            app.logger.debug("Could not read middle_frame.jpg")
+            app.logger.debug(f"Error: {e}")
     else:
         # Get the width and height of the video frames
         frame_width = int(cap.get(cv.CAP_PROP_FRAME_WIDTH))
@@ -930,7 +968,7 @@ def save_middle_video_frame(file_path, save_path):
             cv.imwrite(f'{save_path}', frame)  # Save the frame as an image
 
         else:
-            print("Error: Could not read the middle frame.")
+            app.logger.debug("Error: Could not read the middle frame.")
         
         # Release the video capture object
         cap.release()
@@ -1012,7 +1050,7 @@ def get_track_data_plot():
     # Construct the path to the counts file
     video_name = filename.split('.')[0]
     base_path = os.path.join('backend/static/outputs', video_name)
-    print(base_path)
+    app.logger.debug(base_path)
     run_folders = glob.glob(os.path.join(base_path, 'run_*'))
     # Sort the folders by creation time and get the most recent one
     run_folders.sort(key=os.path.getctime, reverse=True)
@@ -1022,8 +1060,8 @@ def get_track_data_plot():
         run_name = os.path.basename(most_recent_run)
         # Read the tracks.txt file and parse the data
         tracks_file_path = os.path.join(most_recent_run, f'{video_name}_tracks_output.txt')
-        print(f"get tracks filename: {tracks_file_path}")
-        count_lines_file = "coordinates.txt"
+        app.logger.debug(f"get tracks filename: {tracks_file_path}")
+        count_lines_file = "backend/coordinates.txt"
         if os.path.exists(count_lines_file):
             count_lines = parse_count_lines_file(count_lines_file)
         if os.path.exists(tracks_file_path):
@@ -1034,10 +1072,10 @@ def get_track_data_plot():
             # video_path = os.path.join('static/uploads', filename)
             saved_frame = f"{most_recent_run}/middle_frame.jpg"
             resolution = save_middle_video_frame(video_path, saved_frame)
-            print(f"saved_frame {saved_frame}")
+            app.logger.debug(f"saved_frame {saved_frame}")
             saved_frame = f"backend/static/outputs/{video_name}/{run_name}/middle_frame.jpg"
             # saved_frame = os.path.join(os.path.curdir, saved_frame)
-            print(f"saved_frame frontend {saved_frame}")
+            app.logger.debug(f"saved_frame frontend {saved_frame}")
             kernel_size = 10
             kernel = np.ones(kernel_size) / kernel_size
 
@@ -1062,7 +1100,7 @@ def get_track_data_plot():
             # # Run DBSCAN clustering on the collected end points
             # db = DBSCAN(eps=my_epsilon, min_samples=my_min_samples).fit(end_points)
             # labels = db.labels_
-            # print(f"db scan labels: {labels}")
+            # app.logger.debug(f"db scan labels: {labels}")
 
             # # Create a dictionary to hold lines for each cluster
             # clustered_lines = {label: [] for label in set(labels) if label != -1}
@@ -1221,7 +1259,7 @@ def get_plots():
     # Construct the path to the counts file
     video_name = filename.split('.')[0]
     base_path = os.path.join('backend/static/outputs', video_name)
-    print(base_path)
+    app.logger.debug(base_path)
     run_folders = glob.glob(os.path.join(base_path, 'run_*'))
     # Sort the folders by creation time and get the most recent one
     run_folders.sort(key=os.path.getctime, reverse=True)
@@ -1244,8 +1282,8 @@ def get_plots():
             try:
                 save_plots_as_image(figures[i], save_paths[i])
             except Exception as err:
-                print(f"figure {save_paths[i]} not found")
-                print(f"Error: {err}")
+                app.logger.debug(f"figure {save_paths[i]} not found")
+                app.logger.debug(f"Error: {err}")
                 num_errors += 1
         socketio.emit('plot-download-ready')
         if num_errors == len(figures):
@@ -1258,15 +1296,18 @@ def get_plots():
 
 def shutdown_handler():
     """Handle shutdown. Delete coordinates file"""
-    if exists('coordinates.txt'):
-        remove('coordinates.txt')
+    if exists('backend/coordinates.txt'):
+        remove('backend/coordinates.txt')
 
 if __name__ == '__main__':
-    print("start webapp")
+    # Adjust logging level as necessary
+    app.logger.setLevel(logging.DEBUG)
+    app.logger.debug("start webapp")
     atexit.register(shutdown_handler)
     try:
         app.run(debug=False, port=5000)
+        
     except KeyboardInterrupt:
         shutdown_handler()
     finally:
-        print("Flask server has shut down.")
+        app.logger.debug("Flask server has shut down.")

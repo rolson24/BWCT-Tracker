@@ -8,14 +8,11 @@ import os.path as osp
 import cv2
 import numpy as np
 import torch
-import tensorflow as tf
 import json
 import os
 
 
-from YOLOv8_TensorRT import TRTModule  # isort:skip
-from YOLOv8_TensorRT.torch_utils import det_postprocess
-from YOLOv8_TensorRT.utils import letterbox, blob, path_to_list
+
 
 sys.path.append('.')
 
@@ -34,15 +31,12 @@ from typing import Callable, Generator, Optional, Tuple, Iterable
 # from tracker.tracking_utils.timer import Timer
 from Impr_Assoc_Track.Impr_Assoc_Track import ImprAssocTrack
 from ConfTrack.ConfTrack import ConfTrack
-from LSTMTrack.LSTMTrack import LSTM_Track
-from LSTMTrack.LSTM_predictor import LSTM_predictor
 from supervision import ByteTrack
-import super_gradients as sg
+# import super_gradients as sg
 
 from ultralytics import YOLO, NAS
 
 import color_transfer_cpu as ct_cpu
-import color_transfer_gpu as ct_gpu
 
 import csv
 import pandas as pd
@@ -221,11 +215,11 @@ if __name__ == "__main__":
       with open(status_file_path, 'w') as status_file:
           json.dump({'status': status}, status_file)
 
-    """
+  """
   Parse command line arguments to set source video path, output directory, 
   and generate output file paths for annotated, recolored, and tracked videos.
   """
-SOURCE_VIDEO_PATH = args.source_video_path
+  SOURCE_VIDEO_PATH = args.source_video_path
   SOURCE_VIDEO_NAME = osp.basename(SOURCE_VIDEO_PATH).split('.')[0]
   SOURCE_VIDEO_EXT = osp.basename(SOURCE_VIDEO_PATH).split('.')[1]
   if SOURCE_VIDEO_EXT == "avi":
@@ -282,6 +276,9 @@ SOURCE_VIDEO_PATH = args.source_video_path
 
     elif MODEL_EXTENSION == "engine":
       #engine = "yolov8s.engine"
+      from YOLOv8_TensorRT import TRTModule  # isort:skip
+      from YOLOv8_TensorRT.torch_utils import det_postprocess
+      from YOLOv8_TensorRT.utils import letterbox, blob, path_to_list
       global Engine
       global device
       global H, W
@@ -291,7 +288,7 @@ SOURCE_VIDEO_PATH = args.source_video_path
       H, W = Engine.inp_info[0].shape[-2:]
       print(H, W)
       Engine.set_desired(['num_dets', 'bboxes', 'scores', 'labels'])
-
+ 
       # yolo_model = YOLO(MODEL, task="detect")
       CLASS_NAMES_DICT = {1:"Pedestrians", 0:"Bikes", 2:"Scooters", 3:"Wheelchairs"} # for yolov8n-2023-11-03 change for yolov8s-2024-02-14
       #yolo_model = torch.hub.load(MODEL, 'custom',
@@ -407,7 +404,11 @@ SOURCE_VIDEO_PATH = args.source_video_path
                           device=args.device,
                           frame_rate=video_info.fps)
   elif OBJECT_TRACKER == "LSTMTrack":
+    from LSTMTrack.LSTMTrack import LSTM_Track
+    from LSTMTrack.LSTM_predictor import LSTM_predictor
     from LSTMTrack.LSTMTrack import STrack
+    import tensorflow as tf
+
     # currently load model 14 and then load model 15 bbox weights, need to fix
     LSTM_model = tf.keras.models.load_model("/home/object_track_count_analysis/BWCT-tracker/tracking/models/LSTM_model_14_and_15_bb")
     # LSTM_model.load_weights("./models/model_15_bb_saved_weights.h5")
@@ -470,6 +471,8 @@ SOURCE_VIDEO_PATH = args.source_video_path
       print(source_img_stats)
 
     elif args.color_calib_device=="gpu":
+      import color_transfer_gpu as ct_gpu
+
       '''for gpu version'''
       # Read the color source image and resize it to match the video dimensions
       color_source = cv2.imread(COLOR_SOURCE_PATH)
@@ -598,7 +601,10 @@ SOURCE_VIDEO_PATH = args.source_video_path
             detections.confidence = scores.cpu().numpy()
             detections.class_id = labels.cpu().numpy().astype(int)
         else:
-            results = yolo_model.predict(frame_cpu, verbose=False, iou=0.7, conf=0.1, device="cuda")[0]
+            if args.device == "cpu":
+              results = yolo_model.predict(frame_cpu, verbose=False, iou=0.7, conf=0.1, device="cpu")[0]
+            elif args.device == "cuda":
+              results = yolo_model.predict(frame_cpu, verbose=False, iou=0.7, conf=0.1, device="cuda")[0]
             detections = sv.Detections.from_ultralytics(results)
             detections = detections[np.isin(detections.class_id, selected_classes)]
     # If the YOLO version is set to 'yolo-nas'
