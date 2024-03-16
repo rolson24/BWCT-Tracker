@@ -58,7 +58,7 @@
 
 This repository contains code for an Electron app that processes videos from traffic cameras or portable cameras to count the number of people passing through the video. The user can draw lines on the video to indicate where they want to count people passing by. The app can distinguish between pedestrians, bikes, electric scooter riders, and wheelchairs (coming soon). It provides a frontend Electron interface that connects to a Flask backend to handle the video processing and people counting logic. The app ensures connectivity between the frontend and backend, monitors the backend health, handles reconnections as needed, and enables saving output files. It is designed to provide a seamless user experience for processing videos to count people crossing designated areas.  
 
-You can see our report here: 
+You can see our report [here](https://docs.google.com/document/d/1ou7F_Dk361bpQnsbr4r7yQ6nwmXW1UgSbhNV0eN8LDI/edit?usp=sharing).
 
 
 ##  Features
@@ -236,6 +236,8 @@ You can see our report here:
 
 * **Python**: `version 3.10.0`
 
+
+
 ###  Installation
 
 <h4>From <code>source</code></h4>
@@ -274,7 +276,11 @@ You can see our report here:
 >> Now install electron:
 >> ```console
 >> $ npm install -g electron
->> ```
+>> ```  
+
+<h4>For Nvidia Jeton</h4>  
+
+> Follow the software portion of these [instructions](https://docs.google.com/document/d/1U1khoDzxc9aadaoIp-lEI_-omGDv7U1ePb3fUbNVBNQ/edit?usp=sharing) to do the full setup on an Nvidia Jetson (includes instructions for OS install)
 
 ###  Usage
 
