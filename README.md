@@ -5,7 +5,7 @@
     <h1 align="center"></h1>
 </p>
 <p align="center">
-    <em>Where Innovation Meets Reliability!</em>
+    <em>Using Computer Vision to count and analyze how vulneralble road users use streets so that local government has data to justify investing in pedestrian and bike infrastructure.</em>
 </p>
 <p align="center">
 	<!-- local repository, no metadata badges. -->
