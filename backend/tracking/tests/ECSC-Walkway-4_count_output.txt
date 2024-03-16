@@ -1,9 +1,0 @@
-line 0
-Pedestrian_in,0
-Pedestrian_out,0
-Scooter-Rider_in,0
-Scooter-Rider_out,0
-bikerider_in,0
-bikerider_out,0
-wheelchair_in,0
-wheelchair_out,0
