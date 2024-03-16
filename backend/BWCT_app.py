@@ -687,13 +687,13 @@ def get_counts():
             for line in lines:
                 parts = line.split('\n')
                 line_name = parts[0]
-                app.logger.debug('Line:', line_name)
-                app.logger.debug('Parts:', parts)
+                app.logger.debug(f'Line: {line_name}')
+                app.logger.debug(f'Parts: {parts}')
 
                 for part in parts:
-                    app.logger.debug('Part:', part)
+                    app.logger.debug(f'Part: {part}')
                     class_parts = re.split(r'[\s,]+', part)  # This splits on whitespace, which should work similarly to the regex used in JS
-                    app.logger.debug('Class parts:', class_parts)
+                    app.logger.debug(f'Class parts: {class_parts}')
                     if class_parts[0] == 'line':
                         current_line = class_parts[1]
                     elif class_parts[0] == 'Average' and class_parts[1] == 'FPS:':

@@ -685,7 +685,7 @@ if __name__ == "__main__":
                   f.write(f"{frame_id},{i},{classname},out\n")
 
     fps_monitor.tick()
-    total_fps += fps_monitor()
+    total_fps += fps_monitor.fps
     total_frames = frame_id + 1
     ''' Log Time'''
     if frame_id % 20 == 0:
@@ -694,7 +694,7 @@ if __name__ == "__main__":
       with open('progress.txt', 'w') as f:
         f.write(str(progress))
       with open('track_logs.txt', '+a') as f:
-        f.write('Processing frame {}/{} ({:.2f} fps)'.format(frame_id, video_info.total_frames, max(1e-5, fps_monitor())))
+        f.write('Processing frame {}/{} ({:.2f} fps)'.format(frame_id, video_info.total_frames, max(1e-5, fps_monitor.fps)))
       # logger.info(f"Write Progress: {progress}")
 
     # ''' Log Time'''
