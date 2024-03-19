@@ -1,0 +1,26 @@
+{
+  "name": "bwct-tracker-electron",
+  "version": "1.0.0",
+  "description": "BWCT-tracker app",
+  "main": "test_main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rolson24/BWCT-tracker.git"
+  },
+  "author": "Raif Olson",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/rolson24/BWCT-tracker/issues"
+  },
+  "homepage": "https://github.com/rolson24/BWCT-tracker/blob/ByteTrackOnWendellPCWorking/README.md",
+  "devDependencies": {
+    "electron": "^29.0.1"
+  },
+  "dependencies": {
+    "fs-extra": "^11.2.0",
+    "node-fetch": "^3.3.2"
+  }
+}
