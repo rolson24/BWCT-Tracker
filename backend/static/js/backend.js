@@ -1,6 +1,5 @@
 // This is the backend for the app.
 
-
 // Function to handle Socket.IO client reconnection
 function handleSocketReconnection(socket) {
     // Attempt to reconnect with an exponential backoff strategy
@@ -42,38 +41,6 @@ function drawArrow(ctx, fromx, fromy, tox, toy, arrowWidth, color) {
 }
 
 
-// Function to save the canvas state to local storage
-function saveCanvasState() {
-    var canvas = document.getElementById('canvas');
-    var canvasState = canvas.toDataURL(); // Save canvas drawing as data URL
-    localStorage.setItem('canvasState', canvasState);
-}
-
-// Function to load the canvas state from local storage
-function loadCanvasState() {
-    var canvas = document.getElementById('canvas');
-    var ctx = canvas.getContext('2d');
-    var canvasState = localStorage.getItem('canvasState');
-    if (canvasState) {
-        var image = new Image();
-        image.onload = function() {
-            ctx.drawImage(image, 0, 0); // Draw the saved image onto the canvas
-        };
-        image.src = canvasState;
-    }
-}
-
-// Function to save the counts data to local storage
-function saveCountsDataToLocalStorage(countsData) {
-    localStorage.setItem('countsData', JSON.stringify(countsData));
-}
-
-// Function to load the counts data from local storage
-function loadCountsDataFromLocalStorage() {
-    var countsData = JSON.parse(localStorage.getItem('countsData'));
-    return countsData;
-}
-
 // Function to render the counts data into the table
 function renderCountsTable(countsData) {
     var tableBody = document.getElementById('counts-display').querySelector('tbody');
@@ -100,17 +67,6 @@ function renderCountsTable(countsData) {
     }
 }
 
-// Function to save the plot data to local storage
-function savePlotDataToLocalStorage(plotData, plotName) {
-    localStorage.setItem(plotName, JSON.stringify(plotData));
-}
-
-// Function to load the plot data from local storage
-function loadPlotDataFromLocalStorage(plotName) {
-    var plotData = JSON.parse(localStorage.getItem(plotName));
-    return plotData;
-}
-
 // Function to render the plot using Plotly
 function renderPlot(plotData, plotElementId, plotName) {
     if (plotData) {
@@ -129,178 +85,26 @@ var processing = false;
 var labels = {};  // Create an object to store the labels
 
 
-// Function to save the current state to local storage
-function saveStateToLocalStorage() {
-    var state = {
-        processing: processing,
-        // lineStart: lineStart,
-        videoPath: $('#video-player').attr('src'),
-        saveVideoOption: $('#save-video').val(),
-        // Add other state variables you need to save here
-    };
-    console.log(`video src saved: ${state.videoPath}`)
-    localStorage.setItem('appState', JSON.stringify(state));
-}
-
-// Function to load the state from local storage
-function loadStateFromLocalStorage() {
-    var state = JSON.parse(localStorage.getItem('appState'));
-    if (state) {
-        processing = state.processing;
-        // lineStart = state.lineStart;
-        $('#video-player').attr('src', state.videoPath);
-        $('#save-video').val(state.saveVideoOption);
-        // Restore other parts of the state here
-        // Update the UI to reflect the restored state
-        console.log(`video src loaded: ${state.videoPath}`)
-    }
-}
-
 function beforeUnloadListener(event) {
     event.returnValue = 'Are you sure you want to leave?';
 }
 
 // Save the state to local storage when the page is unloaded
 window.addEventListener('beforeunload', function (e) {
-    saveStateToLocalStorage();
+    saveStateToLocalStorage(this.document, processing);
     // Save the labels state to local storage
     saveLabelsState(labels);
     // Save the canvas state to local storage
-    saveCanvasState();
+    saveCanvasState(this.document.getElementById('canvas'));
     // Rest of the beforeunload event...
 });
 
 window.addEventListener('beforeunload', beforeUnloadListener);
 
-// Function to reload the video player with the current video source
-function reloadVideoPlayer() {
-    var videoPlayer = document.getElementById('video-player');
-    if (videoPlayer) {
-        var currentSrc = videoPlayer.getAttribute('src');
-        videoPlayer.src = ''; // Reset the source to force reload
-        videoPlayer.load(); // Load the video player without source to clear previous state
-        videoPlayer.src = currentSrc; // Set the source back to the original path
-        videoPlayer.load(); // Load the video player with the new source
-        videoPlayer.show(); // Show the video player
-    }
-}
-
-// Function to check if a video has been uploaded and reload the video player
-function checkAndReloadVideoPlayer() {
-    var videoPlayer = document.getElementById('video-player');
-    // Check if the video player has a source and if it's not empty
-    if (videoPlayer && videoPlayer.getAttribute('src')) {
-        console.log("reload the video player");
-        reloadVideoPlayer(); // Call the reloadVideoPlayer function if a source is present
-    }
-}
-
-// Function to save the canvas state to local storage
-function saveCanvasState() {
-    var canvas = document.getElementById('canvas');
-    var canvasState = canvas.toDataURL(); // Save canvas drawing as data URL
-    localStorage.setItem('canvasState', canvasState);
-}
-
-// Function to load the canvas state from local storage
-function loadCanvasState() {
-    var canvas = document.getElementById('canvas');
-    var ctx = canvas.getContext('2d');
-    var canvasState = localStorage.getItem('canvasState');
-    if (canvasState) {
-        var image = new Image();
-        image.onload = function() {
-            ctx.drawImage(image, 0, 0); // Draw the saved image onto the canvas
-        };
-        image.src = canvasState;
-    }
-}
-
-// Function to save the labels state to local storage
-function saveLabelsState(labels) {
-    var labelsState = [];
-    var inLabelsState = [];
-    var outLabelsState = [];
-    for (var key in labels) {
-        if (labels.hasOwnProperty(key)) {
-            if (key === "In" || key === "Out") {
-                labels[key].forEach(function(label) {
-                    var labelData = {
-                        text: label.textContent,
-                        left: label.style.left,
-                        top: label.style.top,
-                        color: label.style.color
-                    };
-                    if (key === "In") {
-                        inLabelsState.push(labelData);
-                    } else {
-                        outLabelsState.push(labelData);
-                    }
-                });
-            } else {
-                var label = labels[key];
-                labelsState.push({
-                    text: label.textContent,
-                    left: label.style.left,
-                    top: label.style.top,
-                    color: label.style.color
-                });
-            }
-        }
-    }
-    localStorage.setItem('labelsState', JSON.stringify(labelsState));
-    localStorage.setItem('inLabelsState', JSON.stringify(inLabelsState));
-    localStorage.setItem('outLabelsState', JSON.stringify(outLabelsState));
-}
-
-// Function to load the labels state from local storage and recreate labels
-function loadLabelsState() {
-    var labelsState = JSON.parse(localStorage.getItem('labelsState'));
-    var inLabelsState = JSON.parse(localStorage.getItem('inLabelsState'));
-    var outLabelsState = JSON.parse(localStorage.getItem('outLabelsState'));
-    if (labelsState) {                                                               
-        var videoContainer = document.querySelector('.video-container');             
-        labelsState.forEach(function(labelState) {
-        createLabel(labelState, "Line")
-        });
-    }                                                                
-    if (inLabelsState) {                                                             
-        inLabelsState.forEach(function(labelState) {                                 
-            createLabel(labelState, "In");                                           
-        });                                                                          
-    }                                                                                
-    if (outLabelsState) {                                                            
-        outLabelsState.forEach(function(labelState) {                                
-            createLabel(labelState, "Out");                                          
-        });                                                                          
-    } 
-}
-// Helper function to create a label                                                 
-function createLabel(labelState, type) {                                             
-    var videoContainer = document.querySelector('.video-container');                 
-    var label = document.createElement('span');                                      
-    label.textContent = labelState.text;                                             
-    label.style.position = 'absolute';                                               
-    label.style.left = labelState.left;                                              
-    label.style.top = labelState.top;                                                
-    label.style.color = labelState.color;                                            
-    label.style.fontSize = '15px';                                                   
-    label.style.fontWeight = 'bold';                                                 
-    label.style.pointerEvents = 'none';                                              
-    videoContainer.appendChild(label);                                               
-    if (type === "In") {                                                             
-        labels["In"].push(label);                                                    
-    } else if (type === "Out") {                                                     
-        labels["Out"].push(label);                                                   
-    } else {                                                                         
-        labels[label.textContent] = label;                                           
-    }                                                                                
-}       
-
 
 $(document).ready(function () {
     // Load state and plot data from local storage
-    loadStateFromLocalStorage();
+    loadStateFromLocalStorage(document);
     var countsData = loadCountsDataFromLocalStorage();
     renderCountsTable(countsData);
     var countsPlotData = loadPlotDataFromLocalStorage('countsPlotData');
@@ -318,13 +122,13 @@ $(document).ready(function () {
     $('#video-player, #canvas').hide();
 
     // Call checkAndReloadVideoPlayer when the page is ready
-    checkAndReloadVideoPlayer();
+    checkAndReloadVideoPlayer(document.getElementById('video-player'));
 
     // Load the labels state when the page is ready
-    loadLabelsState();
+    loadLabelsState(document);
 
     // Load the canvas state when the page is ready
-    loadCanvasState();
+    loadCanvasState(document.getElementById('canvas'));
 
     $('.custom-file-input').on("change", function () {
         var fileName = $(this).val().split("\\").pop();
