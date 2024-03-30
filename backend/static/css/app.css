@@ -1,0 +1,108 @@
+.video-container {
+    position: relative;
+    display: inline-block;
+    width: 640px;
+    /* Set to the width of your video */
+    height: 480px;
+    /* Set to the height of your video */
+}
+
+#video-player,
+#canvas {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+#button-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+#counts-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+#counts-table th,
+#counts-table td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+
+#counts-table th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+}
+
+#canvas+span {
+    position: absolute;
+    pointer-events: none;
+    /* Prevent the label from being interacted with */
+    color: red;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.class-0 {
+    background-color: #f2f2f2;
+}
+
+.class-1 {
+    background-color: #e6ffe6;
+}
+
+.class-2 {
+    background-color: #e6e6ff;
+}
+
+.class-3 {
+    background-color: #ffffcc;
+}
+
+.save_spinner {
+    border: 16px solid #f3f3f3;
+    border-radius: 50%;
+    border-top: 16px solid #3498db;
+    width: 300px;
+    height: 300px;
+    -webkit-animation: spin 2s linear infinite;
+    /* Safari */
+    animation: spin 2s linear infinite;
+}
+
+.process_spinner {
+    border: 10px solid #f3f3f3;
+    border-radius: 50%;
+    border-top: 10px solid #3498db;
+    width: 30px;
+    height: 30px;
+    -webkit-animation: spin 2s linear infinite;
+    /* Safari */
+    animation: spin 2s linear infinite;
+}
+
+/* Safari */
+@-webkit-keyframes spin {
+    0% {
+        -webkit-transform: rotate(0deg);
+    }
+
+    100% {
+        -webkit-transform: rotate(360deg);
+    }
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
