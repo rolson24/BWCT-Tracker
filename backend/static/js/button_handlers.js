@@ -148,3 +148,128 @@ window.handleImportRawDataButton = function handleImportRawDataButton() {
         });
     });
 }
+
+
+window.handleClearLinesButton = function handleClearLinesButton() {
+    $('#clear-lines-button').on('click', function () {
+        var ctx = $('#canvas')[0].getContext('2d');
+        ctx.clearRect(0, 0, $('#canvas')[0].width, $('#canvas')[0].height);
+        $.post('/clear_lines', function (response) {
+        });
+        for (var label in labels) {
+            label_obj = labels[label];
+            if (Array.isArray(label_obj)) {
+                for (var dir_label in label_obj) {
+                    console.log(`dir_label: ${label_obj[dir_label]} type: ${typeof label_obj[dir_label]}`)
+                    label_obj[dir_label].remove()
+                }
+            } else {
+                label_obj.remove()
+            }
+        }
+        labels = {};
+        labels['Out'] = [];
+        labels['In'] = [];
+    });
+}
+
+window.handleDrawButton = function handleDrawButton() {
+    $('#draw-button').on('click', function () {
+        console.log('Draw button clicked');
+        drawing = !drawing;
+        $('#video-player').prop('controls', !drawing);
+        $('#canvas').css('pointer-events', drawing ? 'auto' : 'none');
+        $(this).text(drawing ? 'Stop Drawing' : 'Draw Lines');
+    });
+}
+
+window.handleProcessButton = function handleProcessButton() {
+    $('#process-button').on('click', function () {
+        if (processing == false) {
+            var confirmProcess = confirm("Are you sure you want to process the full video? This could take several hours. Remember if you just want to process again with new lines, you can use the 'Reprocess Counts' button");
+            if (!confirmProcess) {
+                return; // User clicked 'No', exit the function
+            }
+
+            $('#process-button').prop('disabled', true)
+            $('#reprocess-button').prop('disabled', true)
+
+            processing = true
+            $('#processing-progress').css('width', 0 + '%').attr('aria-valuenow', 0);
+            var saveVideo = $('#save-video').val(); // Get the dropdown value
+
+            $('#processing-loader').show()
+            fetch('/process', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',  // Indicate that you're sending JSON data
+                },
+                body: JSON.stringify({ save_video: saveVideo })  // Convert your data into a JSON string
+
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Video processing started:', data);
+                })
+                .catch(error => {
+                    console.error('There has been a problem with your fetch operation:', error);
+                });
+        }
+    });
+}
+
+window.handleReprocessButton = function handleReprocessButton() {
+    $('#reprocess-button').on('click', function () {
+        $('#processing-progress').css('width', '0%').attr('aria-valuenow', 0);  // Reset the progress bar
+        $('#processing-loader').show()
+
+        fetch('/reprocess', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Video reprocessing started:', data);
+            })
+            .catch(error => {
+                console.error('There has been a problem with your fetch operation:', error);
+            });
+    });
+}
+
+window.handleDownloadButtons = function handleDownloadButtons() {
+    document.getElementById('download-counts-button').addEventListener('click', () => {
+        window.electronAPI.saveCountsFile();
+    });
+
+    $('#download-raw-data-button').on('click', function () {
+        window.electronAPI.saveRawTracksFile();
+    });
+
+    $('#download-lines-button').on('click', function () {
+        window.electronAPI.saveLineCrossingsFile();
+    });
+
+    $('#download-processed-video-button').on('click', function () {
+        window.electronAPI.saveProcessedVideoFile();
+
+    });
+
+    $('#download-plots-button').on('click', function () {
+        window.electronAPI.savePlots();
+        $('#download-plots-button').prop('disabled', true);
+
+    });
+}

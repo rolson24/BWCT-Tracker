@@ -44,6 +44,7 @@ window.addEventListener('beforeunload', function (e) {
 
 window.addEventListener('beforeunload', beforeUnloadListener);
 
+var drawing = false;
 
 $(document).ready(function () {
     // Load state and plot data from local storage
@@ -59,7 +60,6 @@ $(document).ready(function () {
     var personVolumePlotData = loadPlotDataFromLocalStorage('personVolumePlotData');
     renderPlot(personVolumePlotData, 'person-volume-plot', 'person_volume');
 
-    var drawing = false;
     var lineStart = null;
 
     $('#video-player, #canvas').hide();
@@ -83,54 +83,10 @@ $(document).ready(function () {
     handleImportVideoButton();
     handleImportRawDataButton();
 
-    $('#upload-day-night-form').on('submit', function(e) {
-        e.preventDefault(); // Prevent default form submission behavior
+    handleDrawButton();
 
-        var formData = new FormData(this); // Create a FormData object from the form
-        $.ajax({
-            url: '/upload_day_night', // Your Flask route
-            type: 'POST',
-            data: formData,
-            contentType: false, // Necessary for file upload
-            processData: false, // Necessary for file upload
-            success: function(response) {
-                alert(response.message); // Show success message
-            },
-            error: function(xhr) {
-                alert('An error occurred'); // Show error message
-            }
-        });
-    });
+    handleClearLinesButton();
 
-    $('#draw-button').on('click', function () {
-        console.log('Draw button clicked');
-        drawing = !drawing;
-        $('#video-player').prop('controls', !drawing);
-        $('#canvas').css('pointer-events', drawing ? 'auto' : 'none');
-        $(this).text(drawing ? 'Stop Drawing' : 'Draw Lines');
-    });
-
-    $('#clear-lines-button').on('click', function () {
-        var ctx = $('#canvas')[0].getContext('2d');
-        ctx.clearRect(0, 0, $('#canvas')[0].width, $('#canvas')[0].height);
-        $.post('/clear_lines', function (response) {
-            // alert(response.message);
-        });
-        for (var label in labels) {
-            label_obj = labels[label];
-            if (Array.isArray(label_obj)) {
-                for (var dir_label in label_obj) {
-                    console.log(`dir_label: ${label_obj[dir_label]} type: ${typeof label_obj[dir_label]}`)
-                    label_obj[dir_label].remove()
-                }
-            } else {
-                label_obj.remove()
-            }
-        }
-        labels = {};
-        labels['Out'] = [];
-        labels['In'] = [];
-    });
     const forceReflow = (element) => {
         $('#video-upload-button').focus()
     };
@@ -138,6 +94,7 @@ $(document).ready(function () {
     labels['Out'] = [];
     labels['In'] = [];
     $('#canvas').on('click', function (e) {
+        console.log('drawing %b', drawing)
         if (drawing) {
             var rect = this.getBoundingClientRect();
             var x = e.clientX - rect.left;
@@ -159,7 +116,6 @@ $(document).ready(function () {
                 console.log(`scaleX: ${scaleX}, scaleY: ${scaleY}`)
                 console.log(`Line drawn: (${Math.round(lineStart.x * scaleX)},${Math.round(lineStart.y * scaleY)}) (${Math.round(x * scaleX)},${Math.round(y * scaleY)})`)
                 $.post('/coordinates', { line: `(${Math.round(lineStart.x * scaleX)},${Math.round(lineStart.y * scaleY)}) (${Math.round(x * scaleX)},${Math.round(y * scaleY)})` }, function (response) {
-                    // alert(response.message);
                 });
                 // Create a label element for the line
                 var label = document.createElement('span');
@@ -373,15 +329,6 @@ $(document).ready(function () {
                 labels["In"].push(in_label);
                 lineStart = null;
 
-
-                // label.hide().show(0);
-                // label.style.display = 'none';
-                // label.style.display = 'block';
-
-                // out_label.hide().show(0);
-                // in_label.hide().show(0);
-                // canvas.hide().show(0);
-
                 // Apply to the body or specific element needing refresh
                 forceReflow($('#video-container'));
             } else {
@@ -397,102 +344,11 @@ $(document).ready(function () {
 
     console.log('JavaScript code run');  // Log when the JavaScript code is run
 
-    $('#process-button').on('click', function () {
-        if (processing == false) {
-            var confirmProcess = confirm("Are you sure you want to process the full video? This could take several hours. Remember if you just want to process again with new lines, you can use the 'Reprocess Counts' button");
-            if (!confirmProcess) {
-                return; // User clicked 'No', exit the function
-            }
+    handleProcessButton();
 
-            $('#process-button').prop('disabled', true)
-            $('#reprocess-button').prop('disabled', true)
+    handleReprocessButton();
 
-            processing = true
-            $('#processing-progress').css('width', 0 + '%').attr('aria-valuenow', 0);
-            // var formData = new FormData(document.getElementById('upload-form'));
-            // var filename = formData.get('video').name;  // Assuming 'video' is the name attribute of your file input
-            var saveVideo = $('#save-video').val(); // Get the dropdown value
-
-            // formData.append('save_video', saveVideo); // Append the choice to your form data
-            // formData.append('filename', filename); // Append the filename to your form data
-            $('#processing-loader').show()
-            fetch('/process', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',  // Indicate that you're sending JSON data
-                },
-                body: JSON.stringify({ save_video: saveVideo })  // Convert your data into a JSON string
-
-            })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    console.log('Video processing started:', data);
-                })
-                .catch(error => {
-                    console.error('There has been a problem with your fetch operation:', error);
-                });
-        }
-    });
-
-
-
-    $('#reprocess-button').on('click', function () {
-        // var formData = new FormData(document.getElementById('upload-form'));
-        // var filename = formData.get('video').name;  // Get the filename from the form data
-        $('#processing-progress').css('width', '0%').attr('aria-valuenow', 0);  // Reset the progress bar
-        $('#processing-loader').show()
-
-        fetch('/reprocess', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            // body: JSON.stringify({ filename: filename })  // Pass the filename as JSON
-        })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                return response.json();
-            })
-            .then(data => {
-                console.log('Video reprocessing started:', data);
-            })
-            .catch(error => {
-                console.error('There has been a problem with your fetch operation:', error);
-            });
-    });
-
-
-    document.getElementById('download-counts-button').addEventListener('click', () => {
-        window.electronAPI.saveCountsFile();
-    });
-
-    $('#download-raw-data-button').on('click', function () {
-        window.electronAPI.saveRawTracksFile();
-    });
-
-    $('#download-lines-button').on('click', function () {
-        window.electronAPI.saveLineCrossingsFile();
-    });
-
-    $('#download-processed-video-button').on('click', function () {
-        window.electronAPI.saveProcessedVideoFile();
-
-    });
-
-    $('#download-plots-button').on('click', function () {
-        window.electronAPI.savePlots();
-        $('#download-plots-button').prop('disabled', true);
-
-    });
-
-
+    handleDownloadButtons();
 
     var socket = io.connect('http://' + document.domain + ':' + location.port);
     socket.on('disconnect', function() {
@@ -524,17 +380,12 @@ $(document).ready(function () {
         $('#process-button').prop('disabled', false);
         $('#reprocess-button').prop('disabled', false);
 
-
-
-
         // Make an AJAX request to get the counts data
         fetch('/get_counts')
             .then(response => response.json())
             // Inside the fetch success callback
             .then(data => {
                 // Parse the counts data into an array of objects
-                // var lines = data.counts.split('\n\n');
-                // var countsData = [];
                 countsData = data.countsData;
                 var currentLine = 0;
                 var avgFPS;
@@ -547,8 +398,6 @@ $(document).ready(function () {
                 renderPlot(countsPlotData, 'counts-plot', video_name + '_counts_by_line');
                 saveCountsDataToLocalStorage(countsData); // Save the counts data to local storage
                 savePlotDataToLocalStorage(countsPlotData, 'countsPlotData');
-
-
 
                 // Get the table body element
                 var tableBody = document.getElementById('counts-display').querySelector('tbody');
@@ -612,13 +461,10 @@ $(document).ready(function () {
             .then(response => response.json())
             .then(data => {
                 var fig = JSON.parse(data.plot);
-
                 // Use Plotly to render the graph
                 var crossingsPlotData = { data: fig.data, layout: fig.layout };
                 renderPlot(crossingsPlotData, 'crossings-plot', video_name + '_counts_per_hour');
                 savePlotDataToLocalStorage(crossingsPlotData, 'crossingsPlotData');
-
-
             });
 
         fetch('/get_person_volume_data', {
@@ -632,7 +478,6 @@ $(document).ready(function () {
             .then(response => response.json())
             .then(data => {
                 var fig = JSON.parse(data.plot);
-
                 // Use Plotly to render the graph
                 var personVolumePlotData = { data: fig.data, layout: fig.layout };
                 renderPlot(personVolumePlotData, 'person-volume-plot', video_name + '_person_volume');
@@ -649,8 +494,6 @@ $(document).ready(function () {
             .then(data => {
                 // Parse the JSON string into a JavaScript object
                 var fig = JSON.parse(data.fig_json);
-                // var video_name = msg.filename.split('.')[0]
-
                 // Use Plotly to render the graph
                 var trackPlotData = { data: fig.data, layout: fig.layout };
                 renderPlot(trackPlotData, 'track-plot', video_name + '_tracks_overlay');
@@ -658,6 +501,5 @@ $(document).ready(function () {
 
             })
             .catch(error => console.error('Error fetching the Plotly graph:', error));
-
     });
 });
