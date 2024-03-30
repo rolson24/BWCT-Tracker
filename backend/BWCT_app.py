@@ -99,7 +99,7 @@ def upload():
         return jsonify({'message': 'No video provided'}), 400
     else:
         app.logger.debug("render template")
-        return render_template('upload.html')  # replace 'index.html' with your actual template
+        return render_template('frontend.html')  # replace 'index.html' with your actual template
     
 @app.route('/health')
 def health_check():
@@ -181,7 +181,7 @@ def upload_day_night():
         return jsonify({'message': 'No file provided'}), 400
     else:
         app.logger.debug("render template")
-        return render_template('upload.html')  # replace 'index.html' with your actual template
+        return render_template('frontend.html')  # replace 'index.html' with your actual template
     
 
 @app.route('/stream_video')

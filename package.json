@@ -2,7 +2,7 @@
   "name": "bwct-tracker-electron",
   "version": "1.0.0",
   "description": "BWCT-tracker app",
-  "main": "test_main.js",
+  "main": "main.js",
   "scripts": {
     "start": "electron ."
   },
