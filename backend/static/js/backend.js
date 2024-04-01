@@ -86,6 +86,12 @@ $(document).ready(function () {
 
     handleClearLinesButton();
 
+    handleProcessButton();
+
+    handleReprocessButton();
+
+    handleDownloadButtons();
+
     const forceReflow = (element) => {
         $('#video-upload-button').focus()
     };
@@ -98,6 +104,7 @@ $(document).ready(function () {
             var rect = this.getBoundingClientRect();
             var x = e.clientX - rect.left;
             var y = e.clientY - rect.top;
+            lineEnd = { x: x, y: y };
             if (lineStart) {
                 var ctx = this.getContext('2d');
                 ctx.beginPath();
@@ -113,218 +120,16 @@ $(document).ready(function () {
 
                 console.log(`scaleX: ${scaleX}, scaleY: ${scaleY}`)
                 console.log(`Line drawn: (${Math.round(lineStart.x * scaleX)},${Math.round(lineStart.y * scaleY)}) (${Math.round(x * scaleX)},${Math.round(y * scaleY)})`)
-                $.post('/coordinates', { line: `(${Math.round(lineStart.x * scaleX)},${Math.round(lineStart.y * scaleY)}) (${Math.round(x * scaleX)},${Math.round(y * scaleY)})` }, function (response) {
+                $.post('/coordinates', { line: `(${Math.round(lineStart.x * scaleX)},${Math.round(lineStart.y * scaleY)}) (${Math.round(lineEnd.x * scaleX)},${Math.round(lineEnd.y * scaleY)})` }, function (response) {
                 });
-                // Create a label element for the line
-                var label = document.createElement('span');
-                label.textContent = 'Line ' + ((Object.keys(labels).length - 2));  // Use the number of lines as the label
-                label.style.position = 'absolute';
-                label.style.color = 'red';
-                label.style.fontSize = '15px';
-                label.style.fontWeight = 'bold';
-                label.style.pointerEvents = 'none';  // Prevent the label from being interacted with
 
-                var out_label = document.createElement('span');
-                out_label.textContent = 'Out';  // Use the number of lines as the label
-                out_label.style.position = 'absolute';
-                out_label.style.color = 'DarkGreen';
-                out_label.style.fontSize = '15px';
-                out_label.style.fontWeight = 'bold';
-                out_label.style.pointerEvents = 'none';  // Prevent the label from being interacted with
+                current_labels = drawLabels(lineStart, lineEnd, document);
 
-                var in_label = document.createElement('span');
-                in_label.textContent = 'In';  // Use the number of lines as the label
-                in_label.style.position = 'absolute';
-                in_label.style.color = 'blue';
-                in_label.style.fontSize = '15px';
-                in_label.style.fontWeight = 'bold';
-                in_label.style.pointerEvents = 'none';  // Prevent the label from being interacted with
-
-                var labelWidth = 50;
-                var outLabelWidth = 30;
-                var inLabelWidth = 20;
-                var labelHeight = 20;
-
-                var arrowLength = 40;
-                var arrowWidth = 2;
-
-                var canvas_y_offset = Number((canvas.style.top).split('p')[0]);
-                console.log(`${canvas.style.top.split('p')[0]}`);
-
-                lineStart.y += canvas_y_offset;
-                y += canvas_y_offset;
-
-                var line_min_x = Math.min(lineStart.x, x)
-                var line_min_y = Math.min(lineStart.y, y)
-
-                // Calculate the angle of the line
-                var angle = Math.atan2(lineStart.y - y, x - lineStart.x);
-                // Determine the direction of the line and position the label accordingly
-                console.log('Angle:', angle);
-                if (angle > 0 && angle < Math.PI / 2) {
-                    // Line is drawn from bottom left to upper right
-                    console.log('Line is drawn from bottom left to upper right');
-                    label.style.left = (x - labelWidth) + 'px'; // Position to the left of the endpoint
-                    label.style.top = (y - labelHeight) + 'px'; // Position above the endpoint
-
-                    midpoint_x = (x - lineStart.x) / 2 + line_min_x;
-                    midpoint_y = (lineStart.y - y) / 2 + line_min_y;
-                    arrow_midpoint_y = midpoint_y - canvas_y_offset;
-                    angle_new = Math.PI/2 - angle
-                    console.log(`angle new: ${angle_new}`)
-                    arrow_x = Math.abs(Math.cos(angle_new) * arrowLength);
-                    arrow_y = Math.abs(Math.sin(angle_new) * arrowLength);
-                    console.log(`arrow x: ${arrow_x}, arrow y: ${arrow_y}`)
-
-                    out_left = midpoint_x + 10;
-                    out_top = midpoint_y;
-
-                    in_left = midpoint_x - outLabelWidth;
-                    in_top = midpoint_y - labelHeight;
-
-                    in_center_x = in_left + inLabelWidth/2;
-                    in_center_y = in_top + labelHeight/2;
-
-                    out_center_x = out_left + outLabelWidth/2;
-                    out_center_y = out_top + labelHeight/2;
-
-                    in_label.style.left = (in_left) + 'px'          // Position to the right of the line
-                    in_label.style.top = (in_top) + 'px'  // Position below the line
-                    console.log(`In label ${in_label.style.left}, ${in_label.style.top}`)
-                    // in arrow
-                    drawArrow(ctx, in_center_x, (in_center_y - canvas_y_offset), in_center_x + arrow_x, in_center_y - canvas_y_offset + arrow_y, arrowWidth, 'blue');
-
-                    out_label.style.left = (out_left) + 'px'    // Position to the left of the line
-                    out_label.style.top = (out_top) + 'px'   // Position above the line
-                    console.log(`Out label ${out_label.style.left}, ${out_label.style.top}`)
-                    // out arrow
-                    drawArrow(ctx, out_center_x, out_center_y - canvas_y_offset, out_center_x - arrow_x, out_center_y - canvas_y_offset - arrow_y, arrowWidth, 'DarkGreen');
-
-                } else if (angle > Math.PI / 2 && angle < Math.PI) {
-                    // Line is drawn from bottom right to top left
-                    console.log('Line is drawn from bottom right to top left');
-                    label.style.left = (x + 10) + 'px'; // Position to the right of the endpoint
-                    label.style.top = (y - labelHeight) + 'px'; // Position below the endpoint
-
-                    midpoint_x = (lineStart.x - x) / 2 + line_min_x;
-                    midpoint_y = (lineStart.y - y) / 2 + line_min_y;
-                    arrow_midpoint_y = midpoint_y - canvas_y_offset;
-
-                    angle_new = Math.PI/2 - angle
-                    console.log(`angle new: ${angle_new}`)
-                    arrow_x = Math.abs(Math.cos(angle_new) * arrowLength);
-                    arrow_y = Math.abs(Math.sin(angle_new) * arrowLength);
-                    console.log(`arrow x: ${arrow_x}, arrow y: ${arrow_y}`)
-
-                    out_left = midpoint_x + 10;
-                    out_top = midpoint_y - labelHeight;
-
-                    in_left = midpoint_x - outLabelWidth;
-                    in_top = midpoint_y;
-
-                    in_center_x = in_left + inLabelWidth/2;
-                    in_center_y = in_top + labelHeight/2;
-
-                    out_center_x = out_left + outLabelWidth/2;
-                    out_center_y = out_top + labelHeight/2;
-
-                    in_label.style.left = (in_left) + 'px' // Position to the right of the line
-                    in_label.style.top = (in_top) + 'px' // Position above the line
-                    console.log(`In label ${in_label.style.left}, ${in_label.style.top}`)
-                    // in arrow
-                    drawArrow(ctx, in_center_x, in_center_y - canvas_y_offset, in_center_x + arrow_x, in_center_y - canvas_y_offset - arrow_y, arrowWidth, 'blue');
-
-                    out_label.style.left = (out_left) + 'px' // Position to the left of the line
-                    out_label.style.top = (out_top) + 'px'  // Position below the line
-                    // out arrow
-                    drawArrow(ctx, out_center_x, out_center_y - canvas_y_offset, out_center_x - arrow_x, out_center_y - canvas_y_offset + arrow_y, arrowWidth, 'DarkGreen');
-
-                } else if (angle > -Math.PI && angle < -Math.PI / 2) {
-                    // Line is drawn from top right to bottom left
-                    console.log('Line is drawn from top right to bottom left');
-                    label.style.left = (x + 10) + 'px'; // Position to the right of the endpoint
-                    label.style.top = y + 'px';
-
-                    midpoint_x = (lineStart.x - x) / 2 + line_min_x;
-                    midpoint_y = (y - lineStart.y) / 2 + line_min_y;
-                    arrow_midpoint_y = midpoint_y - canvas_y_offset;
-
-                    angle_new = Math.PI/2 - angle
-                    console.log(`angle new: ${angle_new}`)
-                    arrow_x = Math.abs(Math.cos(angle_new) * arrowLength);
-                    arrow_y = Math.abs(Math.sin(angle_new) * arrowLength);
-                    console.log(`arrow x: ${arrow_x}, arrow y: ${arrow_y}`)
-
-                    out_left = midpoint_x - inLabelWidth;
-                    out_top = midpoint_y - labelHeight;
-
-                    in_left = midpoint_x + 10;
-                    in_top = midpoint_y;
-
-                    in_center_x = in_left + inLabelWidth/2;
-                    in_center_y = in_top + labelHeight/2;
-
-                    out_center_x = out_left + outLabelWidth/2;
-                    out_center_y = out_top + labelHeight/2;
-
-                    in_label.style.left = (in_left) + 'px' // Position to the left of the line
-                    in_label.style.top = (in_top) + 'px' // Position above the line
-                    console.log(`In label ${in_label.style.left}, ${in_label.style.top}`)
-                    // in arrow
-                    drawArrow(ctx, in_center_x, in_center_y - canvas_y_offset, in_center_x - arrow_x, in_center_y - canvas_y_offset - arrow_y, arrowWidth, 'blue');
-
-                    out_label.style.left = (out_left) + 'px'           // Position to the right of the line
-                    out_label.style.top = (out_top) + 'px'   // Position below the line
-                    // out arrow
-                    drawArrow(ctx, out_center_x, out_center_y - canvas_y_offset, out_center_x + arrow_x, out_center_y - canvas_y_offset + arrow_y, arrowWidth, 'DarkGreen');
-
-
-                } else {
-                    // Line is drawn from top left to bottom right
-                    console.log('Line is drawn from top left to bottom right');
-                    label.style.left = (x - labelWidth) + 'px'; // Position to the left of the endpoint
-                    label.style.top = y + 'px';
-
-                    midpoint_x = (x - lineStart.x) / 2 + line_min_x;
-                    midpoint_y = (y - lineStart.y) / 2 + line_min_y;
-                    arrow_midpoint_y = midpoint_y - canvas_y_offset;
-
-                    angle_new = Math.PI/2 - angle
-                    console.log(`angle new: ${angle_new}`)
-                    arrow_x = Math.abs(Math.cos(angle_new) * arrowLength);
-                    arrow_y = Math.abs(Math.sin(angle_new) * arrowLength);
-                    console.log(`arrow x: ${arrow_x}, arrow y: ${arrow_y}`)
-
-                    out_left = midpoint_x - inLabelWidth;
-                    out_top = midpoint_y;
-
-                    in_left = midpoint_x + 10;
-                    in_top = midpoint_y - labelHeight;
-
-                    in_center_x = in_left + inLabelWidth/2;
-                    in_center_y = in_top + labelHeight/2;
-
-                    out_center_x = out_left + outLabelWidth/2;
-                    out_center_y = out_top + labelHeight/2;
-
-                    in_label.style.left = (in_left) + 'px' // Position to the left of the line
-                    in_label.style.top = (in_top) + 'px' // Position below the line
-                    console.log(`In label ${in_label.style.left}, ${in_label.style.top}`)
-                    // in arrow
-                    drawArrow(ctx, in_center_x, in_center_y - canvas_y_offset, in_center_x - arrow_x, in_center_y - canvas_y_offset + arrow_y, arrowWidth, 'blue');
-
-                    out_label.style.left = (out_left) + 'px' // Position to the right of the line
-                    out_label.style.top = (out_top) + 'px'  // Position above the line
-                    // out arrow
-                    drawArrow(ctx, out_center_x, out_center_y - canvas_y_offset, out_center_x + arrow_x, out_center_y - canvas_y_offset - arrow_y, arrowWidth, 'DarkGreen');
-
-                }
-                document.querySelector('.video-container').appendChild(label);
-                document.querySelector('.video-container').appendChild(out_label);
-                document.querySelector('.video-container').appendChild(in_label);
-                labels[label.textContent] = label;  // Store the label in the labels object
-                labels["Out"].push(out_label);
-                labels["In"].push(in_label);
+                console.log(current_labels)
+                label = current_labels[0];
+                labels[label.outerText] = label;  // Store the label in the labels object
+                labels["Out"].push(current_labels[1]);
+                labels["In"].push(current_labels[2]);
                 lineStart = null;
 
                 // Apply to the body or specific element needing refresh
@@ -339,14 +144,6 @@ $(document).ready(function () {
         document.getElementById("thisisfucked").clear
     });
 
-
-    console.log('JavaScript code run');  // Log when the JavaScript code is run
-
-    handleProcessButton();
-
-    handleReprocessButton();
-
-    handleDownloadButtons();
 
     var socket = io.connect('http://' + document.domain + ':' + location.port);
     socket.on('disconnect', function() {
