@@ -23,7 +23,6 @@ function handleSocketReconnection(socket) {
 }
 
 
-
 var processing = false;
 var labels = {};  // Create an object to store the labels
 
@@ -109,10 +108,9 @@ $(document).ready(function () {
                 ctx.stroke();
                 var video = document.getElementById('video-player');
                 var canvas = document.getElementById('canvas');
-                var scaleX = video_width / canvas.width;
-                var scaleY = video_height / canvas.height;
-                // var scaleX = 1;
-                // var scaleY = 1;
+                var scaleX = video.videoWidth / canvas.width;
+                var scaleY = video.videoHeight / canvas.height;
+
                 console.log(`scaleX: ${scaleX}, scaleY: ${scaleY}`)
                 console.log(`Line drawn: (${Math.round(lineStart.x * scaleX)},${Math.round(lineStart.y * scaleY)}) (${Math.round(x * scaleX)},${Math.round(y * scaleY)})`)
                 $.post('/coordinates', { line: `(${Math.round(lineStart.x * scaleX)},${Math.round(lineStart.y * scaleY)}) (${Math.round(x * scaleX)},${Math.round(y * scaleY)})` }, function (response) {

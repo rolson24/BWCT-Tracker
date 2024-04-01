@@ -446,7 +446,7 @@ if __name__ == "__main__":
   trace_annotator = sv.TraceAnnotator(thickness=1, trace_length=300)
 
   # create instance of LineZoneAnnotator
-  line_zone_annotator = sv.LineZoneAnnotator(thickness=2, text_thickness=2, text_scale=1)
+  line_zone_annotator = sv.LineZoneAnnotator(thickness=2, text_thickness=1, text_scale=.5)
 
   # create instance of FPSMonitor
   fps_monitor = sv.FPSMonitor()
