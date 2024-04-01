@@ -1,10 +1,11 @@
 // Function to save the current state to local storage
 window.saveStateToLocalStorage = function saveStateToLocalStorage(document, processing) {
+    var video_player = document.getElementById('video-player');
     var state = {
         processing: processing,
         // lineStart: lineStart,
-        videoPath: document.getElementById('video-player').attr('src'),
-        saveVideoOption: document.getElementById('save-video').val(),
+        videoPath: video_player.getAttribute('src'),
+        saveVideoOption: document.getElementById('save-video').value,
         // Add other state variables you need to save here
     };
     console.log(`video src saved: ${state.videoPath}`)
