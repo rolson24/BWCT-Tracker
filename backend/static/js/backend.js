@@ -78,7 +78,7 @@ $(document).ready(function () {
     });
 
     handleImportVideoButton();
-    
+
     handleImportRawDataButton();
 
     handleDrawButton();
@@ -92,7 +92,7 @@ $(document).ready(function () {
     handleDownloadButtons();
 
     const forceReflow = (element) => {
-        $('#video-upload-button').focus()
+        $('#video-player').focus();
     };
 
     labels['Out'] = [];
