@@ -39,6 +39,8 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 import threading
 
+from file_utils import find_most_recent_run
+
 class FileWatchHandler(FileSystemEventHandler):
     def __init__(self, callback):
         self.callback = callback
@@ -74,7 +76,6 @@ video_path = None
 
 app.config['UPLOADED_VIDEOS_DEST'] = 'static/uploads'
 configure_uploads(app, videos)
-
 
 
 track_fig = None
@@ -135,11 +136,7 @@ def receive_raw_tracks_file_path():
 
     video_name = os.path.basename(zip_file).split('.')[0]
     app.logger.debug(f"zip file name: {video_name}")
-    # base_path = os.path.join(base_path, video_name)
-    # run_folders = glob.glob(os.path.join(base_path, 'run_*'))
-    # # Sort the folders by creation time and get the most recent one
-    # run_folders.sort(key=os.path.getctime, reverse=True)
-    # most_recent_run = run_folders[0] if run_folders else None
+
 
     # Specify the directory to extract to
     extract_to = f'backend/static/outputs/{video_name}/run_1'
@@ -186,11 +183,9 @@ def upload_day_night():
 
 @app.route('/stream_video')
 def stream_video():
-    # filename = request.args.get('filename')  # Get filename from query parameter
     filename = file_paths[0]
     if not filename:
         return "Filename not provided", 400
-    # filename = os.path.join(app.config['UPLOADED_VIDEOS_DEST'], filename)
 
     app.logger.debug(f"filename to reencode: {filename}")
     def generate():
@@ -249,10 +244,7 @@ def download_counts():
     
     filename = os.path.basename(file_paths[0])  # Get the filename
     video_name = filename.split('.')[0]  # Extract video name without extension
-    base_path = os.path.join('backend/static/outputs', video_name)
-    run_folders = glob.glob(os.path.join(base_path, 'run_*'))
-    run_folders.sort(key=os.path.getctime, reverse=True)
-    most_recent_run = run_folders[0] if run_folders else None
+    most_recent_run = find_most_recent_run(video_name)
 
     if most_recent_run:
         counts_file_path = os.path.join(most_recent_run, f'{video_name}_counts_output.txt')
@@ -269,12 +261,7 @@ def get_raw_tracks():
     # Construct the path to the counts file
     video_name = filename.split('.')[0]
     base_name = 'backend/static/outputs'
-    base_path = os.path.join(base_name, video_name)
-    app.logger.debug(base_path)
-    run_folders = glob.glob(os.path.join(base_path, 'run_*'))
-    # Sort the folders by creation time and get the most recent one
-    run_folders.sort(key=os.path.getctime, reverse=True)
-    most_recent_run = run_folders[0] if run_folders else None
+    most_recent_run = find_most_recent_run(video_name)
     # Check if there is a most recent run folder
     if most_recent_run:
         counts_file_path = os.path.join(most_recent_run, f'{video_name}_tracks_output.txt')
@@ -307,10 +294,7 @@ def get_counts_file_path():
     
     filename = os.path.basename(file_paths[0])  # Get the filename
     video_name = filename.split('.')[0]  # Extract video name without extension
-    base_path = os.path.join('backend/static/outputs', video_name)
-    run_folders = glob.glob(os.path.join(base_path, 'run_*'))
-    run_folders.sort(key=os.path.getctime, reverse=True)
-    most_recent_run = run_folders[0] if run_folders else None
+    most_recent_run = find_most_recent_run(video_name)
 
     if most_recent_run:
         counts_file_path = os.path.join(most_recent_run, f'{video_name}_counts_output.txt')
@@ -328,11 +312,7 @@ def download_video():
     # Construct the path to the counts file
     video_name = filename.split('.')[0]
     video_ext = filename.split('.')[1]
-    base_path = os.path.join('backend/static/outputs', video_name)
-    run_folders = glob.glob(os.path.join(base_path, 'run_*'))
-    # Sort the folders by creation time and get the most recent one
-    run_folders.sort(key=os.path.getctime, reverse=True)
-    most_recent_run = run_folders[0] if run_folders else None
+    most_recent_run = find_most_recent_run(video_name)
     # Check if there is a most recent run folder
     if most_recent_run:
         # Construct the path to the counts file within the most recent run folder
@@ -351,11 +331,7 @@ def get_processed_video_file_path():
     # Construct the path to the counts file
     video_name = filename.split('.')[0]
     video_ext = filename.split('.')[1]
-    base_path = os.path.join('backend/static/outputs', video_name)
-    run_folders = glob.glob(os.path.join(base_path, 'run_*'))
-    # Sort the folders by creation time and get the most recent one
-    run_folders.sort(key=os.path.getctime, reverse=True)
-    most_recent_run = run_folders[0] if run_folders else None
+    most_recent_run = find_most_recent_run(video_name)
     # Check if there is a most recent run folder
     if most_recent_run:
         # Construct the path to the counts file within the most recent run folder
@@ -377,11 +353,7 @@ def get_line_crossings_file_path():
     filename = os.path.basename(file_paths[0])  # Get the filename
     # Construct the path to the counts file
     video_name = filename.split('.')[0]
-    base_path = os.path.join('backend/static/outputs', video_name)
-    run_folders = glob.glob(os.path.join(base_path, 'run_*'))
-    # Sort the folders by creation time and get the most recent one
-    run_folders.sort(key=os.path.getctime, reverse=True)
-    most_recent_run = run_folders[0] if run_folders else None
+    most_recent_run = find_most_recent_run(video_name)
     # Check if there is a most recent run folder
     if most_recent_run:
         # Construct the path to the counts file within the most recent run folder
@@ -538,14 +510,13 @@ def process_video(filename, save_video):
                 app.logger.debug("No valid  progress num")
                 pass
 
-
             time.sleep(1)  # Wait for a short period before checking again
             processing_seconds += 1
         if os.path.exists('progress.txt'):
             os.remove('progress.txt')
-        # stderr = process.stderr.read().decode('utf-8')
-        # if stderr:
-        #     app.logger.debug(f"Error: {stderr}")
+        stderr = process.stderr.read().decode('utf-8')
+        if stderr:
+            app.logger.debug(f"Error: {stderr}")
         # After the subprocess has finished and the progress file has been deleted
         socketio.emit('video_processed', {'filename': filename})   
         save_processing_status(filename, 'finished')
@@ -579,14 +550,9 @@ def reprocess_video(filename):
     app.logger.debug(f"reprocess filename {filename}")
     tracker_base_path = "backend/tracking"
     reprocess_script_path = f"{tracker_base_path}/reprocess_tracks.py"
-    base_path = "backend/static/outputs/"
     video_name = filename.split('.')[0]
-    base_path = os.path.join(base_path, video_name)
-    run_folders = glob.glob(os.path.join(base_path, 'run_*'))
-    # Sort the folders by creation time and get the most recent one
-    run_folders.sort(key=os.path.getctime, reverse=True)
-    most_recent_run = run_folders[0] if run_folders else None
 
+    most_recent_run = find_most_recent_run(video_name)
 
     # Check if there is a most recent run folder
     if most_recent_run:
@@ -658,17 +624,12 @@ def get_counts():
     filename = os.path.split(file_paths[0])[1]
     # Construct the path to the counts file
     video_name = filename.split('.')[0]
-    base_path = os.path.join('backend/static/outputs', video_name)
-    app.logger.debug(base_path)
-    run_folders = glob.glob(os.path.join(base_path, 'run_*'))
-    # Sort the folders by creation time and get the most recent one
-    run_folders.sort(key=os.path.getctime, reverse=True)
-    most_recent_run = run_folders[0] if run_folders else None
+
+    most_recent_run = find_most_recent_run(video_name)
     # Check if there is a most recent run folder
     if most_recent_run:
         # Construct the path to the counts file within the most recent run folder
         counts_file_path = os.path.join(most_recent_run, f'{video_name}_counts_output.txt')
-
         
         # Check if the counts file exists
         if os.path.exists(counts_file_path):
@@ -676,7 +637,6 @@ def get_counts():
             with open(counts_file_path, 'r') as f:
                 counts_data = f.read()
             
-
             # Assuming data is a dictionary with 'counts' and 'filename' keys
             counts_string = counts_data
             lines = counts_string.strip().split('\n\n')
@@ -758,12 +718,7 @@ def get_crossings_data():
     filename = os.path.split(file_paths[0])[1]
     # Construct the path to the counts file
     video_name = filename.split('.')[0]
-    base_path = os.path.join('backend/static/outputs', video_name)
-    app.logger.debug(base_path)
-    run_folders = glob.glob(os.path.join(base_path, 'run_*'))
-    # Sort the folders by creation time and get the most recent one
-    run_folders.sort(key=os.path.getctime, reverse=True)
-    most_recent_run = run_folders[0] if run_folders else None
+    most_recent_run = find_most_recent_run(video_name)
     # Check if there is a most recent run folder
     if most_recent_run:
         data = request.json
@@ -786,10 +741,6 @@ def get_crossings_data():
         # Use the formatted 'time' for plotting
         hourly_counts['time'] = hourly_counts['timestamp'].dt.time
         hourly_counts.drop(columns=['timestamp'], inplace=True)
-
-        # Convert to JSON or a suitable format for the frontend
-        # plotly_data = hourly_counts.to_json(orient='records', date_format='iso')
-
 
         # Transform data into Plotly format
         transformed_data = {}
@@ -849,12 +800,7 @@ def get_person_volume():
     filename = os.path.split(file_paths[0])[1]
     # Construct the path to the counts file
     video_name = filename.split('.')[0]
-    base_path = os.path.join('backend/static/outputs', video_name)
-    app.logger.debug(base_path)
-    run_folders = glob.glob(os.path.join(base_path, 'run_*'))
-    # Sort the folders by creation time and get the most recent one
-    run_folders.sort(key=os.path.getctime, reverse=True)
-    most_recent_run = run_folders[0] if run_folders else None
+    most_recent_run = find_most_recent_run(video_name)
     # Check if there is a most recent run folder
     if most_recent_run:
         data = request.json
@@ -872,11 +818,7 @@ def get_person_volume():
         # Format timestamps to only include the time portion
         volume_df['time'] = volume_df['timestamp'].dt.time
 
-        # volume_df.set_index('time', inplace=True)
-        # hourly_counts = volume_df.groupby([pd.Grouper(freq='15min')]).size().reset_index(name='count')
-
         # Use the formatted 'time' for plotting
-        # volume_df['time'] = volume_df['timestamp'].dt.time
         volume_df.drop(columns=['timestamp'], inplace=True)
 
         # smoothing
@@ -1049,12 +991,8 @@ def get_track_data_plot():
     video_path = file_paths[0]
     # Construct the path to the counts file
     video_name = filename.split('.')[0]
-    base_path = os.path.join('backend/static/outputs', video_name)
-    app.logger.debug(base_path)
-    run_folders = glob.glob(os.path.join(base_path, 'run_*'))
-    # Sort the folders by creation time and get the most recent one
-    run_folders.sort(key=os.path.getctime, reverse=True)
-    most_recent_run = run_folders[0] if run_folders else None
+    most_recent_run = find_most_recent_run(video_name)
+
     # Check if there is a most recent run folder
     if most_recent_run:
         run_name = os.path.basename(most_recent_run)
@@ -1084,62 +1022,6 @@ def get_track_data_plot():
 
             color_dict = {0: "Yellow", 1: "Red", 2: "Green", 3: "Blue"}
 
-            # traces = [trace for trace in tracks.values() if len(trace) > 4]
-
-            # # Collect all end points from tracks
-            # end_points = np.array([
-            #     (trace[-1, 0] + trace[-1, 2] // 2, trace[-1, 1] + trace[-1, 3]) 
-            #     for trace in traces
-            # ])
-
-            # # max distance between two points in a cluster
-            # my_epsilon = 100
-            # my_min_samples = 2
-
-
-            # # Run DBSCAN clustering on the collected end points
-            # db = DBSCAN(eps=my_epsilon, min_samples=my_min_samples).fit(end_points)
-            # labels = db.labels_
-            # app.logger.debug(f"db scan labels: {labels}")
-
-            # # Create a dictionary to hold lines for each cluster
-            # clustered_lines = {label: [] for label in set(labels) if label != -1}
-
-            # # The labels array now holds the cluster ID for each point in all_points_array
-            # # Points with the same label belong to the same cluster
-            # # Points with the label -1 are considered noise and not part of any cluster
-
-            # # Add lines to their respective clusters based on labels
-            # for label, trace in zip(labels, traces):
-            #     if label != -1:
-            #         clustered_lines[label].append(trace)
-
-
-            # # Draw a smooth line for each cluster
-            # for cluster_id, lines in clustered_lines.items():
-            #     if not lines:  # Skip if there are no lines in the cluster
-            #         continue
-
-            #     # Collect all points from the traces in the cluster
-            #     all_x_points = []
-            #     all_y_points = []
-            #     for line in lines:
-            #         all_x_points.extend(line[:, 0] + line[:, 2] // 2)
-            #         all_y_points.extend(line[:, 1] + line[:, 3])
-
-            #     # # Interpolate a spline through the points
-            #     # tck, u = splprep([all_x_points, all_y_points], s=0)
-            #     # new_points = splev(u, tck)
-
-            #     # Add trace for the cluster
-            #     track_fig.add_trace(go.Scatter(
-            #         x=all_x_points,
-            #         y=all_y_points,
-            #         mode='lines',
-            #         line=dict(width=3),  # Adjust line thickness
-            #         name=f'Cluster {cluster_id}'
-            #     ))
-
             max_tracks = 200
 
             if len(tracks.keys()) > max_tracks:
@@ -1149,12 +1031,8 @@ def get_track_data_plot():
 
             traces = [trace for trace in tracks.values() if len(trace) > 20]
 
-            
             for i, trace in enumerate(traces):
-                # if i % step_size == 0:
-                # class_ids = tracks[track_id][1]
-                # class_id = np.argmax(np.histogram(class_ids, [0, 1, 2, 3])[0])
-                if len(trace) != 0:
+               if len(trace) != 0:
                     # annotate the center of the bottom line of the BBox, because that is intuitive
                     trace_center_x = trace[:,0] + trace[:,2] // 2
                     trace_bottom_y = trace[:,1] + trace[:,3]
@@ -1177,44 +1055,11 @@ def get_track_data_plot():
                         ),
                         row=1, col=1
                     )
-                    # Add an arrow annotation to the end of each trace
-                    # if len(trace_convolved_x) > 10:
-                    #     fig.add_annotation(
-                    #         x=trace_convolved_x[-1],  # X-coordinate of the arrow's head (end of the line)
-                    #         y=trace_convolved_y[-1],  # Y-coordinate of the arrow's head (end of the line)
-                    #         ax=trace_convolved_x[-10],  # X-coordinate of the arrow's tail
-                    #         ay=trace_convolved_y[-10],  # Y-coordinate of the arrow's tail
-                    #         xref='x', yref='y',
-                    #         axref='x', ayref='y',
-                    #         text='',  # No text
-                    #         showarrow=True,
-                    #         arrowhead=3,
-                    #         arrowsize=1,
-                    #         arrowwidth=2,
-                    #         arrowcolor='red'
-                    #     )
+
             # Update xaxis and yaxis properties for each subplot
             track_fig.update_xaxes(title_text="X", range=[0, resolution[0]], row=1, col=1)
             track_fig.update_yaxes(title_text="Y", range=[resolution[1], 0], row=1, col=1)
 
-            # aspect ratio of image
-            # aspect_ratio = resolution[0]/resolution[1]
-            # plot_width = 800
-            # plot_height = int(plot_width / aspect_ratio)
-            # Set a background image
-            # track_fig.update_layout(
-            #     images=[
-            #         dict(
-            #             source=saved_frame,
-            #             xref="x", yref="y",  # Use "paper" to refer to the whole plotting area
-            #             x=0, y=1,  # These specify the position of the image (0,0 is bottom left, 1,1 is top right)
-            #             sizex=resolution[0], sizey=resolution[1],  # These specify the size of the image. 1,1 will cover the entire background
-            #             sizing="stretch",
-            #             opacity=1.0,  # Set the opacity of the image
-            #             layer="below"  # Ensure the image is below the plot
-            #         )
-            #     ]
-            # )
             # Set the layout to include a background image
             track_fig.update_layout(
                 images=[go.layout.Image(
@@ -1258,12 +1103,8 @@ def get_plots():
     video_path = file_paths[0]
     # Construct the path to the counts file
     video_name = filename.split('.')[0]
-    base_path = os.path.join('backend/static/outputs', video_name)
-    app.logger.debug(base_path)
-    run_folders = glob.glob(os.path.join(base_path, 'run_*'))
-    # Sort the folders by creation time and get the most recent one
-    run_folders.sort(key=os.path.getctime, reverse=True)
-    most_recent_run = run_folders[0] if run_folders else None
+    most_recent_run = find_most_recent_run(video_name)
+
     # Check if there is a most recent run folder
     if most_recent_run:
         # Read the tracks.txt file and parse the data
