@@ -267,20 +267,24 @@ You can see our report [here](https://docs.google.com/document/d/1ou7F_Dk361bpQn
 >>>
 >>> If you have an amd gpu, install [onnxruntime-directml](https://onnxruntime.ai/docs/execution-providers/DirectML-ExecutionProvider.html) (First try pip install onnxruntime-directml, and if that doesn't work, then try building from [source](https://onnxruntime.ai/docs/execution-providers/DirectML-ExecutionProvider.html).)
 >
-> Depends on FFMPEG
+> Depends on FFMPEG: [Instructions](https://www.hostinger.com/tutorials/how-to-install-ffmpeg)
 >
 > 4. Install electron:
 >
 >> First install node.js:
 >> [Instructions](https://nodejs.org/en/download)  
 >>
+>> Now install fs-extra:
+>> ```
+>> $ npm install fs-extra
+>> ```
 >> Now install electron:
 >> ```console
 >> $ npm install -g electron
 >> ```  
 >> 5. Start app:
 >> ```console
->> $ cd path/to/BWCT-Track
+>> $ cd path/to/BWCT-Tracker
 >> $ npm start
 >> ```
 

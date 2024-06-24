@@ -201,9 +201,11 @@ def stream_video():
             '-f', 'mp4',
             '-vcodec', 'libx264',
             '-preset', 'veryfast',
-            '-movflags', '+frag_keyframe+empty_moov',
+            '-movflags', '+frag_keyframe+empty_moov+faststart',
             '-',
         ]
+        # ffmpeg -i input.avi -c:v libx264 -c:a aac -movflags +faststart output.mp4
+
         app.logger.debug(f"cmd: {cmd}")
         try:
             if os.name == 'nt':

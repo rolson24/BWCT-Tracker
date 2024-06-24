@@ -2,6 +2,7 @@ window.handleImportVideoButton = function handleImportVideoButton() {
     $('#video-upload-button').on('click', function(e) {
         // Prevent the default form submission if the button is part of a form
         e.preventDefault();
+        console.log("Open video button")
 
         // Call the openFileDialog function exposed by the preload script
         window.electronAPI.openFileDialog().then(result => {

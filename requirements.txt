@@ -20,12 +20,12 @@ pyyaml
 yacs
 termcolor
 gdown
-onnxruntime
-onnxruntime-gpu
+# onnxruntime
+# onnxruntime-gpu
 supervision
 tensorflow
 roboflow
-torchreid
+# torchreid
 ultralytics
 plotly
 pandas
@@ -36,7 +36,7 @@ flask-socketio
 watchdog
 scikit-learn
 kaleido
-cupy==13.0.0
-faiss-gpu
+# cupy==13.0.0
+# faiss-gpu
 
 
