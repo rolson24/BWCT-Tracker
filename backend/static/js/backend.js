@@ -176,7 +176,10 @@ $(document).ready(function () {
 
         // Make an AJAX request to get the counts data
         fetch('/get_counts')
-            .then(response => response.json())
+            .then(response => {
+                response.json()
+                // console.log(response.message)
+            })
             // Inside the fetch success callback
             .then(data => {
                 // Parse the counts data into an array of objects

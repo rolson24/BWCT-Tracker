@@ -185,75 +185,75 @@ def upload_day_night():
     
 
 
-@app.route('/stream_video')
-def stream_video():
-    # Path to your video file
-    filename = file_paths[0]
-    if not filename:
-        return "Filename not provided", 400
-    
-    app.logger.debug(f"filename to serve: {filename}")
-
-    return send_file(filename, mimetype='video/mp4')
-
 # @app.route('/stream_video')
 # def stream_video():
-#     # filename = request.args.get('filename')  # Get filename from query parameter
+#     # Path to your video file
 #     filename = file_paths[0]
 #     if not filename:
 #         return "Filename not provided", 400
-#     # filename = os.path.join(app.config['UPLOADED_VIDEOS_DEST'], filename)
+    
+#     app.logger.debug(f"filename to serve: {filename}")
 
-#     app.logger.debug(f"filename to reencode: {filename}")
-#     def generate():
-#         cmd = [
-#             'ffmpeg',
-#             '-i', filename,  # Use the dynamically provided filename
-#             '-loop', '1',
-#             '-f', 'mp4',
-#             '-vcodec', 'libx264',
-#             '-preset', 'veryfast',
-#             '-movflags', '+frag_keyframe+empty_moov+faststart',
-#             '-',
-#         ]
-#         # ffmpeg -i input.avi -c:v libx264 -c:a aac -movflags +faststart output.mp4
+#     return send_file(filename, mimetype='video/mp4')
 
-#         app.logger.debug(f"cmd: {cmd}")
-#         try:
-#             if os.name == 'nt':
-#                 app.logger.debug("On windows")
-#                 proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, shell=True)
-#             else:
-#                 proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-#             app.logger.debug(f"Started FFMPEG")
-#             # i = 0
-#             # stdout, stderr = proc.communicate()
-#             # app.logger.debug(f"FFmpeg error: {stderr.decode()}")
-#             # app.logger.debug(f"FFmpeg output: {stdout}")
+@app.route('/stream_video')
+def stream_video():
+    # filename = request.args.get('filename')  # Get filename from query parameter
+    filename = file_paths[0]
+    if not filename:
+        return "Filename not provided", 400
+    # filename = os.path.join(app.config['UPLOADED_VIDEOS_DEST'], filename)
 
-#             while True:
-#                 data = proc.stdout.read(512)
-#                 # proc.stderr.flush()
+    app.logger.debug(f"filename to reencode: {filename}")
+    def generate():
+        cmd = [
+            'ffmpeg',
+            '-i', filename,  # Use the dynamically provided filename
+            '-loop', '1',
+            '-f', 'mp4',
+            '-vcodec', 'libx264',
+            '-preset', 'veryfast',
+            '-movflags', '+frag_keyframe+empty_moov+faststart',
+            '-',
+        ]
+        # ffmpeg -i input.avi -c:v libx264 -c:a aac -movflags +faststart output.mp4
+
+        app.logger.debug(f"cmd: {cmd}")
+        try:
+            if os.name == 'nt':
+                app.logger.debug("On windows")
+                proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, shell=True)
+            else:
+                proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+            app.logger.debug(f"Started FFMPEG")
+            # i = 0
+            # stdout, stderr = proc.communicate()
+            # app.logger.debug(f"FFmpeg error: {stderr.decode()}")
+            # app.logger.debug(f"FFmpeg output: {stdout}")
+
+            while True:
+                data = proc.stdout.read(512)
+                # proc.stderr.flush()
             
-#                 if not data:
-#                     app.logger.debug("Done with video.")
-#                     break
-#                 yield data
-#                 # err = proc.stderr.read(1024).decode()
-#                 # app.logger.debug(f"{err}")
-#                 # i += 1
+                if not data:
+                    app.logger.debug("Done with video.")
+                    break
+                yield data
+                # err = proc.stderr.read(1024).decode()
+                # app.logger.debug(f"{err}")
+                # i += 1
                 
-#             stdout, stderr = proc.communicate()
-#             app.logger.debug(f"FFmpeg error: {stderr.decode()}")
+            stdout, stderr = proc.communicate()
+            app.logger.debug(f"FFmpeg error: {stderr.decode()}")
 
-#             if proc.returncode != 0:
-#                 app.logger.debug(f"FFmpeg error: {stderr.decode()}")
-#             proc.wait()
+            if proc.returncode != 0:
+                app.logger.debug(f"FFmpeg error: {stderr.decode()}")
+            proc.wait()
 
-#         except Exception as e:
-#             app.logger.debug("Error executing FFmpeg:", str(e))
+        except Exception as e:
+            app.logger.debug("Error executing FFmpeg:", str(e))
 
-#     return Response(generate(), mimetype='video/mp4')
+    return Response(generate(), mimetype='video/mp4')
 
     
 @app.route('/download_counts')
@@ -483,10 +483,10 @@ def process_video(filename, save_video):
     tracker_base_path = "backend/tracking"
     script_path = f"{tracker_base_path}/track.py"
     output_path = "backend/static/outputs/"
-    model_path = f"{tracker_base_path}/models/best.onnx"
+    # model_path = f"{tracker_base_path}/models/best.onnx"
+    model_path = "../tracking/models/yolov8s-2024-02-16-best_fp16_trt.engine"
     cc_source_path = f"{tracker_base_path}/reference-image-test.jpg"
     day_night_path = "static/day_night.csv"
-    # model_path = "../tracking/models/yolov8s-2024-02-14-best_fp16_trt.engine"
 
     # tracker = "Impr_Assoc"
     tracker = "ConfTrack"
@@ -508,7 +508,8 @@ def process_video(filename, save_video):
                     # "--color_calib_enable",
                     "--color_source_path", cc_source_path,
                     "--color_calib_device", "cpu",
-                    "--device", "cpu",
+                    # "--device", "cpu",
+                    "--device", "gpu"
                     # "--day_night_switch_file", day_night_path,
                     "--object_tracker", tracker
                 ],
@@ -529,7 +530,8 @@ def process_video(filename, save_video):
                     # "--color_calib_enable",
                     "--color_source_path", cc_source_path,
                     "--color_calib_device", "cpu",
-                    "--device", "cpu",
+                    # "--device", "cpu",
+                    "--device", "gpu"
                     # "--day_night_switch_file", day_night_path,
                     "--object_tracker", tracker
 
@@ -764,7 +766,7 @@ def get_counts():
         else:
             return jsonify({'message': 'Counts file not found in the most recent run'}),  404
     else:
-        return jsonify({'message': 'No runs found for the video'}),  404
+        return jsonify({'message': 'No runs found for the video'}),  500
 
 @app.route('/get_crossings_data', methods=['POST'])
 def get_crossings_data():
