@@ -184,64 +184,76 @@ def upload_day_night():
         return render_template('frontend.html')  # replace 'index.html' with your actual template
     
 
+
 @app.route('/stream_video')
 def stream_video():
-    # filename = request.args.get('filename')  # Get filename from query parameter
+    # Path to your video file
     filename = file_paths[0]
     if not filename:
         return "Filename not provided", 400
-    # filename = os.path.join(app.config['UPLOADED_VIDEOS_DEST'], filename)
+    
+    app.logger.debug(f"filename to serve: {filename}")
 
-    app.logger.debug(f"filename to reencode: {filename}")
-    def generate():
-        cmd = [
-            'ffmpeg',
-            '-i', filename,  # Use the dynamically provided filename
-            '-loop', '1',
-            '-f', 'mp4',
-            '-vcodec', 'libx264',
-            '-preset', 'veryfast',
-            '-movflags', '+frag_keyframe+empty_moov+faststart',
-            '-',
-        ]
-        # ffmpeg -i input.avi -c:v libx264 -c:a aac -movflags +faststart output.mp4
+    return send_file(filename, mimetype='video/mp4')
 
-        app.logger.debug(f"cmd: {cmd}")
-        try:
-            if os.name == 'nt':
-                app.logger.debug("On windows")
-                proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, shell=True)
-            else:
-                proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-            app.logger.debug(f"Started FFMPEG")
-            # i = 0
-            # stdout, stderr = proc.communicate()
-            # app.logger.debug(f"FFmpeg error: {stderr.decode()}")
-            # app.logger.debug(f"FFmpeg output: {stdout}")
+# @app.route('/stream_video')
+# def stream_video():
+#     # filename = request.args.get('filename')  # Get filename from query parameter
+#     filename = file_paths[0]
+#     if not filename:
+#         return "Filename not provided", 400
+#     # filename = os.path.join(app.config['UPLOADED_VIDEOS_DEST'], filename)
 
-            while True:
-                data = proc.stdout.read(512)
-                # proc.stderr.flush()
+#     app.logger.debug(f"filename to reencode: {filename}")
+#     def generate():
+#         cmd = [
+#             'ffmpeg',
+#             '-i', filename,  # Use the dynamically provided filename
+#             '-loop', '1',
+#             '-f', 'mp4',
+#             '-vcodec', 'libx264',
+#             '-preset', 'veryfast',
+#             '-movflags', '+frag_keyframe+empty_moov+faststart',
+#             '-',
+#         ]
+#         # ffmpeg -i input.avi -c:v libx264 -c:a aac -movflags +faststart output.mp4
+
+#         app.logger.debug(f"cmd: {cmd}")
+#         try:
+#             if os.name == 'nt':
+#                 app.logger.debug("On windows")
+#                 proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, shell=True)
+#             else:
+#                 proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+#             app.logger.debug(f"Started FFMPEG")
+#             # i = 0
+#             # stdout, stderr = proc.communicate()
+#             # app.logger.debug(f"FFmpeg error: {stderr.decode()}")
+#             # app.logger.debug(f"FFmpeg output: {stdout}")
+
+#             while True:
+#                 data = proc.stdout.read(512)
+#                 # proc.stderr.flush()
             
-                if not data:
-                    app.logger.debug("Done with video.")
-                    break
-                yield data
-                # err = proc.stderr.read(1024).decode()
-                # app.logger.debug(f"{err}")
-                # i += 1
+#                 if not data:
+#                     app.logger.debug("Done with video.")
+#                     break
+#                 yield data
+#                 # err = proc.stderr.read(1024).decode()
+#                 # app.logger.debug(f"{err}")
+#                 # i += 1
                 
-            stdout, stderr = proc.communicate()
-            app.logger.debug(f"FFmpeg error: {stderr.decode()}")
+#             stdout, stderr = proc.communicate()
+#             app.logger.debug(f"FFmpeg error: {stderr.decode()}")
 
-            if proc.returncode != 0:
-                app.logger.debug(f"FFmpeg error: {stderr.decode()}")
-            proc.wait()
+#             if proc.returncode != 0:
+#                 app.logger.debug(f"FFmpeg error: {stderr.decode()}")
+#             proc.wait()
 
-        except Exception as e:
-            app.logger.debug("Error executing FFmpeg:", str(e))
+#         except Exception as e:
+#             app.logger.debug("Error executing FFmpeg:", str(e))
 
-    return Response(generate(), mimetype='video/mp4')
+#     return Response(generate(), mimetype='video/mp4')
 
     
 @app.route('/download_counts')
