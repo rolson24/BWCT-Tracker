@@ -509,7 +509,7 @@ def process_video(filename, save_video):
                     "--color_source_path", cc_source_path,
                     "--color_calib_device", "cpu",
                     # "--device", "cpu",
-                    "--device", "gpu"
+                    "--device", "cuda",
                     # "--day_night_switch_file", day_night_path,
                     "--object_tracker", tracker
                 ],
@@ -531,7 +531,7 @@ def process_video(filename, save_video):
                     "--color_source_path", cc_source_path,
                     "--color_calib_device", "cpu",
                     # "--device", "cpu",
-                    "--device", "gpu"
+                    "--device", "cuda",
                     # "--day_night_switch_file", day_night_path,
                     "--object_tracker", tracker
 

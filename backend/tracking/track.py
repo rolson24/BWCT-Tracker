@@ -46,7 +46,7 @@ IMAGE_EXT = [".jpg", ".jpeg", ".webp", ".bmp", ".png"]
 
 # Define the argument parser for command-line interface
 def make_parser():
-  parser = argparse.ArgumentParser("Track and Count People with Improved Association Track!")
+  parser = argparse.ArgumentParser("Track and Count People")
 
   parser.add_argument("--source_video_path", help="path to source video to perform counting on. 'path/to/video.ext' ext can be: ('mp4', 'm4v', 'mjpeg', 'avi', 'h264')")
   parser.add_argument("--output_dir", help="path to target output directory. 'path/to/output/dir'")
