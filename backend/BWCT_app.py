@@ -484,7 +484,7 @@ def process_video(filename, save_video):
     script_path = f"{tracker_base_path}/track.py"
     output_path = "backend/static/outputs/"
     # model_path = f"{tracker_base_path}/models/best.onnx"
-    model_path = "../tracking/models/yolov8s-2024-02-16-best_fp16_trt.engine"
+    model_path = f"{tracker_base_path}/models/yolov8s-2024-02-16-best_fp16_trt.engine"
     cc_source_path = f"{tracker_base_path}/reference-image-test.jpg"
     day_night_path = "static/day_night.csv"
 
